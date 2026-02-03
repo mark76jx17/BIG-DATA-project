@@ -1,0 +1,3 @@
+city,total_h3_cells,total_services,avg_services_per_cell,median_services,max_services,service_coverage_std,Health_total,Education_total,Food_total,Food Retail_total,Retail_total,Services_total,Financial_total,Public Services_total,Security_total,Sports_total,Recreation_total,Culture_total,Religion_total,Transportation_total,Tourism_total,Professional Services_total,Public Utilities_total
+Pavia,3912,16920,4.325153374233129,2.0,150,9.033905917475163,377,361,1069,451,123,126,191,388,71,3718,7484,156,718,172,408,29,1078
+Cagliari,274,2580,9.416058394160585,5.5,123,13.132261722945808,91,188,536,142,52,37,36,50,21,551,328,73,102,44,112,10,207
