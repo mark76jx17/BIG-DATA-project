@@ -4,10 +4,27 @@ Contains all constants, tags definitions, and category mappings.
 """
 
 # Cities to analyze
-LOCATIONS = ['Pavia, Italy', 'Cagliari, Italy']
+LOCATIONS = [
+    {
+        "city": "Pavia",
+        "country": "Italy"
+    },
+    {
+        "city": "Cagliari",
+        "country": "Italy"
+    },
+    {
+        "city": "Lecco",
+        "country": "Italy"
+    },
+    {
+        "city": "Nuoro",
+        "country": "Italy"
+    }
+]
 
 # H3 resolution (9 = cells of ~0.1 km², ~174m per side)
-H3_RESOLUTION = 9
+H3_RESOLUTION = 10
 
 # Minimum services threshold for "well-served" cells (15-minute city concept)
 WELL_SERVED_THRESHOLD = 3
@@ -200,4 +217,52 @@ KEPLER_COLOR_RANGE = {
     'type': 'sequential',
     'category': 'Uber',
     'colors': ['#5A1846', '#900C3F', '#C70039', '#E3611C', '#F1920E', '#FFC300']
+}
+
+PALETTES = {
+    'Health':                ['#fee5d9', '#fcae91', '#fb6a4a', '#de2d26', '#a50f15'], # Rossi
+    'Education':             ['#fff7bc', '#fee391', '#fec44f', '#fe9929', '#ec7014'], # Giallo/Arancio
+    'Food':                  ['#ffedff', '#efbbff', '#d896ff', '#be29ec', '#660066'], # Magenta/Viola
+    'Food Retail':           ['#fff2e6', '#ffd9b3', '#ffbf80', '#ff8c1a', '#b35900'], # Arancio scuro
+    'Retail':                ['#fff5eb', '#fee6ce', '#fdd0a2', '#fdae6b', '#8c2d04'], # Terra/Ocra
+    'Services':              ['#f7fcf0', '#e0f3db', '#a8ddb5', '#4eb3d3', '#084081'], # Verde/Blu freddo
+    'Financial':             ['#e0f3f8', '#abd9e9', '#74add1', '#4575b4', '#313695'], # Blu Notte
+    'Public Services':       ['#e5f5f9', '#99d8c9', '#2ca25f', '#006d2c', '#00441b'], # Verde Bosco
+    'Security':              ['#fcf4f4', '#f1b6b6', '#e17979', '#c53131', '#7b1818'], # Amaranto
+    'Sports':                ['#f0f9e8', '#bae4bc', '#7bccc4', '#43a2ca', '#0868ac'], # Petrolio
+    'Recreation':            ['#fde0ef', '#f1b6da', '#de77ae', '#c51b7d', '#8e0152'], # Fucsia/Bordeaux
+    'Culture':               ['#f2f0f7', '#cbc9e2', '#9e9ac8', '#756bb1', '#54278f'], # Viola/Indaco
+    'Religion':              ['#fff7fb', '#ece7f2', '#d0d1e6', '#a6bddb', '#023858'], # Blu Ghiaccio
+    'Transportation':        ['#f7f7f7', '#d9d9d9', '#bdbdbd', '#969696', '#252525'], # Grigi/Asfalto
+    'Tourism':               ['#fff7ec', '#fee8c8', '#fdbb84', '#e34a33', '#b30000'], # Rosso Mattone
+    'Professional Services': ['#eff3ff', '#bdd7e7', '#6baed6', '#3182bd', '#08519c'], # Blu Reale
+    'Public Utilities':      ['#e0fbff', '#80deea', '#26c6da', '#0097a7', '#006064']  # Turchese/Ciano
+}
+CATEGORY_COLORS = {
+    # AREA SOCIALE E CULTURALE (Toni Viola/Rosa/Indaco)
+    'Culture': [155, 89, 182],          # Ametista
+    'Religion': [103, 58, 183],         # Deep Purple
+    'Tourism': [233, 30, 99],           # Rosa Intenso
+    'Recreation': [142, 68, 173],       # Prugna
+    
+    # AREA ESSENZIALE E SALUTE (Toni Rossi/Arancio)
+    'Health': [231, 76, 60],            # Rosso Soft
+    'Security': [192, 57, 43],          # Granata (Senso di urgenza/attenzione)
+    'Education': [243, 156, 18],        # Ambra (Energia intellettuale)
+    
+    # AREA COMMERCIALE E FOOD (Toni Giallo/Oro)
+    'Food': [255, 193, 7],              # Giallo ocra
+    'Food Retail': [255, 160, 0],       # Arancio dorato
+    'Retail': [211, 84, 0],             # Zucca (Distingue dal food)
+
+    # AREA SERVIZI E PROFESSIONI (Toni Blu/Azzurro)
+    'Financial': [41, 128, 185],        # Blu professione
+    'Professional Services': [52, 152, 219], # Azzurro chiaro
+    'Services': [22, 160, 133],         # Ottanio (Distinzione visiva)
+
+    # AREA PUBBLICA E TRASPORTI (Toni Verdi/Grigi)
+    'Public Services': [39, 174, 96],    # Verde Smeraldo
+    'Public Utilities': [26, 188, 156],  # Turchese scuro
+    'Transportation': [127, 140, 141],   # Grigio Asfalto
+    'Sports': [46, 204, 113]             # Verde Prato (Energia fisica)
 }

@@ -11,7 +11,7 @@ from pathlib import Path
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
-from config import LOCATIONS, H3_RESOLUTION, WELL_SERVED_THRESHOLD
+from config import LOCATIONS, H3_RESOLUTION, WELL_SERVED_THRESHOLD, SERVICE_CATEGORIES
 from data_loader import download_all_pois, save_raw_data, load_raw_data
 from spark_processor import create_spark_session, process_pois_with_spark
 from analytics import (
@@ -20,7 +20,7 @@ from analytics import (
     print_report,
     compare_cities
 )
-from visualization import create_3d_map, create_split_map, save_map
+from visualization import create_3d_map, create_aggregate_map, save_map, create_category_map
 
 
 def setup_directories():
@@ -48,7 +48,7 @@ def run_analysis(use_cached_data: bool = False,
     print(" " * 15 + "URBAN SERVICES ANALYSIS WITH PYSPARK")
     print("=" * 70)
     print(f"\nConfiguration:")
-    print(f"  - Cities: {', '.join(LOCATIONS)}")
+    print(f"  - Cities: {', '.join([loc['city'] for loc in LOCATIONS])}")
     print(f"  - H3 Resolution: {H3_RESOLUTION}")
     print(f"  - Well-served threshold: {WELL_SERVED_THRESHOLD}+ services")
 
@@ -116,8 +116,13 @@ def run_analysis(use_cached_data: bool = False,
             save_map(map_3d, f'{output_dir}/services_map_3d.html')
 
             print("\nCreating split comparison map...")
-            map_split = create_split_map(df_aggregated)
+            map_split = create_aggregate_map(df_aggregated)
             save_map(map_split, f'{output_dir}/services_map_split.html')
+
+            print("\nCreating category map...")
+            map_split = create_category_map(df_aggregated, categories=SERVICE_CATEGORIES)
+            save_map(map_split, f'{output_dir}/category_map.html')
+
 
         print("\n" + "=" * 70)
         print(" " * 20 + "ANALYSIS COMPLETE!")

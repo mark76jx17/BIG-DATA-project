@@ -16,7 +16,7 @@ warnings.filterwarnings("ignore", category=UserWarning, module="osmnx")
 warnings.filterwarnings("ignore", message="Geometry is in a geographic CRS")
 
 
-def download_pois_for_location(location: str, tags: Dict) -> Optional[gpd.GeoDataFrame]:
+def download_pois_for_location(place: dict, tags: Dict) -> Optional[gpd.GeoDataFrame]:
     """
     Download POIs for a single location from OpenStreetMap.
 
@@ -28,17 +28,18 @@ def download_pois_for_location(location: str, tags: Dict) -> Optional[gpd.GeoDat
         GeoDataFrame with POIs or None if download fails
     """
     try:
-        print(f"Downloading data for {location}...")
-        gdf = ox.features.features_from_place(location, tags)
-        gdf['city'] = location.split(',')[0]
-        print(f"  {location}: {len(gdf)} POIs downloaded")
+        print(f"Downloading data for {place['city']}, {place['country']}...")
+
+        gdf = ox.features.features_from_place(place, tags)
+        gdf['city'] = place["city"]
+
         return gdf
     except Exception as e:
-        print(f"  Error downloading {location}: {e}")
+        print(f"  Error downloading {place['city']}, {place['country']}: {e}")
         return None
 
 
-def download_all_pois(locations: List[str] = LOCATIONS,
+def download_all_pois(places: List[str] = LOCATIONS,
                       tags: Dict = TAGS) -> gpd.GeoDataFrame:
     """
     Download POIs for all locations.
@@ -55,8 +56,8 @@ def download_all_pois(locations: List[str] = LOCATIONS,
     """
     all_gdfs = []
 
-    for location in locations:
-        gdf = download_pois_for_location(location, tags)
+    for place in places:
+        gdf = download_pois_for_location(place, tags)
         if gdf is not None:
             all_gdfs.append(gdf)
 

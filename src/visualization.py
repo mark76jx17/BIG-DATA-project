@@ -7,8 +7,7 @@ import pandas as pd
 from keplergl import KeplerGl
 from typing import Dict, Optional, List
 
-from config import SERVICE_CATEGORIES, KEPLER_COLOR_RANGE
-
+from config import SERVICE_CATEGORIES, KEPLER_COLOR_RANGE, CATEGORY_COLORS, PALETTES
 
 def get_kepler_3d_config(center_lat: float = 43.7,
                          center_lng: float = 9.5,
@@ -110,7 +109,7 @@ def get_kepler_3d_config(center_lat: float = 43.7,
                 'visibleLayerGroups': {
                     'label': True,
                     'road': True,
-                    'border': False,
+                    'border': True,
                     'building': True,
                     'water': True,
                     'land': True,
@@ -125,9 +124,11 @@ def get_kepler_3d_config(center_lat: float = 43.7,
     return config
 
 
-def get_kepler_split_config(center_lat: float = 43.7,
-                            center_lng: float = 9.5,
-                            zoom: float = 7) -> Dict:
+def get_kepler_aggregate_config(center_lat: float = 43.7,
+                                center_lng: float = 9.5,
+                                zoom: float = 7,
+                                categories_info: dict|None=None,
+                            ) -> Dict:
     """
     Get KeplerGL configuration for split map comparison.
 
@@ -139,6 +140,15 @@ def get_kepler_split_config(center_lat: float = 43.7,
     Returns:
         KeplerGL split map configuration dictionary
     """
+
+    tooltip_fields = [
+        {'name': 'city', 'format': None},
+        {'name': 'service_count', 'format': None}
+    ]
+
+    for cat in SERVICE_CATEGORIES:
+        tooltip_fields.append({'name': cat, 'format': None})
+
     config = {
         'version': 'v1',
         'config': {
@@ -163,7 +173,7 @@ def get_kepler_split_config(center_lat: float = 43.7,
                         'type': 'hexagonId',
                         'config': {
                             'dataId': 'services',
-                            'label': 'Services by City',
+                            'label': 'Services',
                             'color': [18, 147, 154],
                             'columns': {'hex_id': 'h3_index'},
                             'isVisible': True,
@@ -172,33 +182,80 @@ def get_kepler_split_config(center_lat: float = 43.7,
                                 'colorRange': KEPLER_COLOR_RANGE,
                                 'coverage': 1,
                                 'enable3d': True,
-                                'sizeRange': [0, 500],
-                                'elevationScale': 5
+                                'elevationScale': 5,
+                                'sizeRange': [0, 500]
                             }
                         },
                         'visualChannels': {
                             'colorField': {'name': 'service_count', 'type': 'integer'},
-                            'colorScale': 'quantile',
+                            'colorScale': 'linear',
                             'sizeField': {'name': 'service_count', 'type': 'integer'},
-                            'sizeScale': 'linear'
+                            'sizeScale': 'linear',
+                            'opacityField': {'name': 'service_count', 'type': 'integer'},
+                            'opacityScale': 'linear'
                         }
                     }
                 ],
-                'splitMaps': [
-                    {'layers': {'h3-split': True}},
-                    {'layers': {'h3-split': True}}
-                ]
+                'interactionConfig': {
+                    'tooltip': {
+                        'fieldsToShow': {'services': tooltip_fields},
+                        'compareMode': False,
+                        'compareType': 'absolute',
+                        'enabled': True
+                    },
+                    'brush': {'size': 0.5, 'enabled': False},
+                    'geocoder': {'enabled': False},
+                    'coordinate': {'enabled': False}
+                }
             },
             'mapState': {
+                'dragRotate': True,
                 'bearing': 0,
                 'latitude': center_lat,
                 'longitude': center_lng,
                 'pitch': 40,
                 'zoom': zoom,
-                'isSplit': True
+                'isSplit': False
             }
         }
     }
+
+    if categories_info != None:
+        # config['config']['visState']['layers'] = []
+        for i, cat in enumerate(categories_info.keys()):
+            new_layer = {
+                    'id': f'layer-{cat.lower().replace(" ", "-")}',
+                    'type': 'hexagonId',
+                    'config': {
+                        'dataId': 'services',
+                        'label': f'{cat}',
+                        'color': PALETTES[cat][4], # Puoi variare il colore qui se vuoi
+                        'columns': {'hex_id': 'h3_index'},
+                        'isVisible': i == 0,  # Solo il primo layer della lista sarà attivo all'avvio
+                        'visConfig': {
+                            'opacity': 0.8,
+                            "colorRange": {
+                                'name': f'Custom {cat}',
+                                'type': 'sequential',
+                                'category': 'Custom',
+                                'colors': PALETTES[cat]
+                            },
+                            'enable3d': True,
+                            'elevationScale': 5,
+                            'sizeRange': [0, 500]
+                        }
+                    },
+                    'visualChannels': {
+                        'colorField': {'name': cat, 'type': 'integer'},
+                        'colorScale': 'linear',
+                        'sizeField': {'name': cat, 'type': 'integer'},
+                        'sizeScale': 'linear',
+                        'opacityField': {'name': cat, 'type': 'integer'},
+                        'opacityScale': 'linear'
+                    }
+                }
+            config['config']['visState']['layers'].append(new_layer)
+
 
     return config
 
@@ -223,7 +280,7 @@ def create_3d_map(df: pd.DataFrame,
         center_lng = df['lng'].mean()
         config = get_kepler_3d_config(center_lat, center_lng)
 
-    map_3d = KeplerGl(height=height, config=config)
+    map_3d = KeplerGl(config=config)
     map_3d.add_data(data=df, name='services')
 
     print("3D map created!")
@@ -235,7 +292,7 @@ def create_3d_map(df: pd.DataFrame,
     return map_3d
 
 
-def create_split_map(df: pd.DataFrame,
+def create_aggregate_map(df: pd.DataFrame,
                      height: int = 700,
                      config: Optional[Dict] = None) -> KeplerGl:
     """
@@ -252,9 +309,11 @@ def create_split_map(df: pd.DataFrame,
     if config is None:
         center_lat = df['lat'].mean()
         center_lng = df['lng'].mean()
-        config = get_kepler_split_config(center_lat, center_lng)
+        config = get_kepler_aggregate_config(center_lat, center_lng)
 
-    map_split = KeplerGl(height=height, config=config)
+    print("testa", df.head())
+
+    map_split = KeplerGl(config=config)
     map_split.add_data(data=df, name='services')
 
     print("Split comparison map created!")
@@ -278,7 +337,7 @@ def save_map(kepler_map: KeplerGl,
 
 
 def create_category_map(df: pd.DataFrame,
-                        category: str,
+                        categories: str,
                         height: int = 700) -> KeplerGl:
     """
     Create a map focused on a specific service category.
@@ -291,27 +350,18 @@ def create_category_map(df: pd.DataFrame,
     Returns:
         KeplerGl map object
     """
-    if category not in df.columns:
-        raise ValueError(f"Category '{category}' not found in data")
+    # if category not in df.columns:
+    #     raise ValueError(f"Category '{category}' not found in data")
 
     center_lat = df['lat'].mean()
     center_lng = df['lng'].mean()
 
-    config = get_kepler_3d_config(center_lat, center_lng)
+    config = get_kepler_aggregate_config(center_lat, center_lng, categories_info=PALETTES)
 
-    # Modify config to use category column
-    config['config']['visState']['layers'][0]['visualChannels']['colorField'] = {
-        'name': category, 'type': 'integer'
-    }
-    config['config']['visState']['layers'][0]['visualChannels']['sizeField'] = {
-        'name': category, 'type': 'integer'
-    }
-    config['config']['visState']['layers'][0]['config']['label'] = f'{category} Services'
-
-    map_cat = KeplerGl(height=height, config=config)
+    map_cat = KeplerGl(config=config)
     map_cat.add_data(data=df, name='services')
 
-    print(f"Map for '{category}' category created!")
+    print(f"Map for category created!")
 
     return map_cat
 
