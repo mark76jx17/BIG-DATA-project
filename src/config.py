@@ -238,6 +238,10 @@ PALETTES = {
     'Professional Services': ['#eff3ff', '#bdd7e7', '#6baed6', '#3182bd', '#08519c'], # Blu Reale
     'Public Utilities':      ['#e0fbff', '#80deea', '#26c6da', '#0097a7', '#006064']  # Turchese/Ciano
 }
+
+# Elasticsearch configuration
+ELASTICSEARCH_HOST = "http://localhost:9200"
+ELASTICSEARCH_INDEX = "urban_services_h3"
 CATEGORY_COLORS = {
     # AREA SOCIALE E CULTURALE (Toni Viola/Rosa/Indaco)
     'Culture': [155, 89, 182],          # Ametista

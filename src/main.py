@@ -20,7 +20,10 @@ from analytics import (
     print_report,
     compare_cities
 )
-from visualization import create_3d_map, create_aggregate_map, save_map, create_category_map
+from visualization import create_3d_map, create_aggregate_map, save_map, save_map_with_es, create_category_map
+from elasticsearch_integration import (
+    create_es_client, create_index, index_h3_data, print_es_summary
+)
 
 
 def setup_directories():
@@ -32,6 +35,7 @@ def setup_directories():
 def run_analysis(use_cached_data: bool = False,
                  save_data: bool = True,
                  create_maps: bool = True,
+                 enable_es: bool = True,
                  output_dir: str = 'output') -> None:
     """
     Run the complete urban services analysis pipeline.
@@ -40,6 +44,7 @@ def run_analysis(use_cached_data: bool = False,
         use_cached_data: If True, load data from cache instead of downloading
         save_data: If True, save processed data to files
         create_maps: If True, generate HTML map files
+        enable_es: If True, index data into Elasticsearch
         output_dir: Directory for output files
     """
     setup_directories()
@@ -105,15 +110,33 @@ def run_analysis(use_cached_data: bool = False,
             comparison.to_csv(comparison_csv, index=False)
             print(f"Comparison table saved to: {comparison_csv}")
 
-        # Step 4: Visualization
+        # Step 4: Elasticsearch Indexing
+        if enable_es:
+            print("\n" + "=" * 50)
+            print("STEP 4: Elasticsearch Indexing")
+            print("=" * 50)
+            try:
+                es = create_es_client()
+                create_index(es)
+                index_h3_data(es, df_aggregated)
+                print_es_summary(es)
+            except Exception as e:
+                print(f"\n  Elasticsearch not available: {e}")
+                print("  Skipping ES indexing. Pipeline continues.")
+
+        # Step 5: Visualization
         if create_maps:
             print("\n" + "=" * 50)
-            print("STEP 4: Visualization")
+            print("STEP 5: Visualization")
             print("=" * 50)
 
             print("\nCreating 3D interactive map...")
             map_3d = create_3d_map(df_aggregated)
             save_map(map_3d, f'{output_dir}/services_map_3d.html')
+
+            if enable_es:
+                print("\nCreating ES search page...")
+                save_map_with_es(map_3d, f'{output_dir}/services_map_3d.html')
 
             print("\nCreating split comparison map...")
             map_split = create_aggregate_map(df_aggregated)
@@ -167,6 +190,12 @@ def main():
     )
 
     parser.add_argument(
+        '--no-es',
+        action='store_true',
+        help='Skip Elasticsearch indexing'
+    )
+
+    parser.add_argument(
         '--output', '-o',
         type=str,
         default='output',
@@ -179,6 +208,7 @@ def main():
         use_cached_data=args.cached,
         save_data=not args.no_save,
         create_maps=not args.no_maps,
+        enable_es=not args.no_es,
         output_dir=args.output
     )
 
