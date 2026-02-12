@@ -167,35 +167,35 @@ def get_kepler_aggregate_config(center_lat: float = 43.7,
                         'speed': 1
                     }
                 ],
-                'layers': [
-                    {
-                        'id': 'h3-split',
-                        'type': 'hexagonId',
-                        'config': {
-                            'dataId': 'services',
-                            'label': 'Services',
-                            'color': [18, 147, 154],
-                            'columns': {'hex_id': 'h3_index'},
-                            'isVisible': True,
-                            'visConfig': {
-                                'opacity': 0.8,
-                                'colorRange': KEPLER_COLOR_RANGE,
-                                'coverage': 1,
-                                'enable3d': True,
-                                'elevationScale': 5,
-                                'sizeRange': [0, 500]
-                            }
-                        },
-                        'visualChannels': {
-                            'colorField': {'name': 'service_count', 'type': 'integer'},
-                            'colorScale': 'linear',
-                            'sizeField': {'name': 'service_count', 'type': 'integer'},
-                            'sizeScale': 'linear',
-                            'opacityField': {'name': 'service_count', 'type': 'integer'},
-                            'opacityScale': 'linear'
-                        }
-                    }
-                ],
+                # 'layers': [
+                #     {
+                #         'id': 'h3-split',
+                #         'type': 'hexagonId',
+                #         'config': {
+                #             'dataId': 'services',
+                #             'label': 'Services',
+                #             'color': [18, 147, 154],
+                #             'columns': {'hex_id': 'h3_index'},
+                #             'isVisible': True,
+                #             'visConfig': {
+                #                 'opacity': 0.8,
+                #                 'colorRange': KEPLER_COLOR_RANGE,
+                #                 'coverage': 1,
+                #                 'enable3d': True,
+                #                 'elevationScale': 5,
+                #                 'sizeRange': [0, 500]
+                #             }
+                #         },
+                #         'visualChannels': {
+                #             'colorField': {'name': 'service_count', 'type': 'integer'},
+                #             'colorScale': 'linear',
+                #             'sizeField': {'name': 'service_count', 'type': 'integer'},
+                #             'sizeScale': 'linear',
+                #             'opacityField': {'name': 'service_count', 'type': 'integer'},
+                #             'opacityScale': 'linear'
+                #         }
+                #     }
+                # ],
                 'interactionConfig': {
                     'tooltip': {
                         'fieldsToShow': {'services': tooltip_fields},
@@ -221,8 +221,11 @@ def get_kepler_aggregate_config(center_lat: float = 43.7,
     }
 
     if categories_info != None:
-        # config['config']['visState']['layers'] = []
+        config['config']['visState']['layers'] = []
+
         for i, cat in enumerate(categories_info.keys()):
+            field_name = "service_count" if cat == "Total" else cat
+            palette = KEPLER_COLOR_RANGE if cat == "Total" else PALETTES[cat]
             new_layer = {
                     'id': f'layer-{cat.lower().replace(" ", "-")}',
                     'type': 'hexagonId',
@@ -246,11 +249,11 @@ def get_kepler_aggregate_config(center_lat: float = 43.7,
                         }
                     },
                     'visualChannels': {
-                        'colorField': {'name': cat, 'type': 'integer'},
+                        'colorField': {'name': field_name, 'type': 'integer'},
                         'colorScale': 'linear',
-                        'sizeField': {'name': cat, 'type': 'integer'},
+                        'sizeField': {'name': field_name, 'type': 'integer'},
                         'sizeScale': 'linear',
-                        'opacityField': {'name': cat, 'type': 'integer'},
+                        'opacityField': {'name': field_name, 'type': 'integer'},
                         'opacityScale': 'linear'
                     }
                 }
@@ -447,7 +450,7 @@ def save_map_with_es(kepler_map: KeplerGl,
     html += 'var mc=[];\n'
     html += 'if(city)mc.push({term:{city:city}});\n'
     html += 'if(cat)mc.push({term:{categories_present:cat}});\n'
-    html += 'if(minS>0)mc.push({range:{service_count:{gte:minS}}});\n'
+    html += 'if(minS>0){if(cat){var r={};r[cat]={gte:minS};mc.push({range:r});}else{mc.push({range:{service_count:{gte:minS}}});}}\n'
     html += 'var q={query:mc.length>0?{bool:{must:mc}}:{match_all:{}},size:10000,sort:[{service_count:"desc"}]};\n'
     html += 'try{\n'
     html += 'var r=await fetch(ES+"/"+IX+"/_search",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(q)});\n'

@@ -31,8 +31,9 @@ def create_spark_session(app_name: str = "UrbanServicesAnalysis",
     spark = (SparkSession.builder
              .appName(app_name)
              .config("spark.driver.memory", memory)
+             .config("spark.executor.memory", memory)
              .config("spark.sql.execution.arrow.pyspark.enabled", "true")
-             .config("spark.sql.shuffle.partitions", "8")
+             .config("spark.sql.shuffle.partitions", 8)
              .getOrCreate())
 
     spark.sparkContext.setLogLevel("WARN")
