@@ -238,33 +238,62 @@ def process_pois_with_spark(spark: SparkSession,
     print("Starting PySpark Processing Pipeline")
     print("="*50)
 
-    # Convert to Spark DataFrame
-    print("\n1. Converting to Spark DataFrame...")
+    # ── Step 2.1: Conversione GeoDataFrame → Spark DataFrame ──
+    # Si estraggono lat/lng dal centroide di ogni geometria e si selezionano
+    # solo le colonne rilevanti (coordinate, città, tag OSM).
+
+    print("\n1. Converting GeoDataFrame to Spark DataFrame...")
     spark_df = geopandas_to_spark(spark, gdf)
+    print("\n   >>> Anteprima Spark DataFrame (dati grezzi con coordinate):")
+    spark_df.show(5, truncate=False)
 
-    # Categorize services
-    print("\n2. Categorizing services...")
+    # ── Step 2.2: Categorizzazione servizi ──
+    # Ogni POI viene classificato in una delle 17 categorie (Health, Education,
+    # Food, ecc.) in base ai tag OSM (amenity, leisure, shop, healthcare, ...).
+    # Si usa un'espressione CASE WHEN che mappa ogni valore del tag alla categoria.
+    print("\n2. Categorizing services based on OSM tags...")
     spark_df = categorize_services_spark(spark_df)
+    print("\n   >>> Anteprima dopo categorizzazione (colonna 'category' aggiunta):")
+    spark_df.select('lat', 'lng', 'city', 'amenity', 'category').show(5, truncate=False)
 
-    # Show category distribution
-    print("\nCategory distribution:")
+    # Distribuzione delle categorie: quanti POI per ogni categoria
+    print("\n   >>> Distribuzione categorie (quanti POI per tipo):")
     spark_df.groupBy('category').count().orderBy(F.desc('count')).show(20)
 
-    # Calculate H3 indices
-    print("\n3. Calculating H3 indices...")
+    # ── Step 2.3: Calcolo indici H3 ──
+    # Ogni POI viene mappato su una cella esagonale H3 in base alle sue
+    # coordinate. La risoluzione H3=10 produce celle di ~174m per lato (~0.015 km²) -> 150m²
+    # I POI con coordinate non valide vengono filtrati.
+    
+    print("\n3. Calculating H3 spatial indices...")
     spark_df = add_h3_indices(spark_df)
+    print("\n   >>> Anteprima con indice H3 (ogni POI ha la sua cella esagonale):")
+    spark_df.select('lat', 'lng', 'city', 'category', 'h3_index').show(5, truncate=False)
 
-    # Aggregate by H3 cell
-    print("\n4. Aggregating by H3 cell...")
+    # ── Step 2.4: Aggregazione per cella H3 ──
+    # I POI vengono raggruppati per cella H3 e città. Per ogni cella si contano:
+    # - service_count: numero totale di servizi nella cella
+    # - Una colonna per ogni categoria con il relativo conteggio (pivot)
+    print("\n4. Aggregating POI counts by H3 cell...")
     aggregated_df = aggregate_by_h3(spark_df)
+    print("\n   >>> Anteprima dati aggregati (servizi totali e per categoria in ogni cella):")
+    aggregated_df.show(5, truncate=False)
 
-    # Add centroids
-    print("\n5. Adding H3 centroids...")
+    # ── Step 2.5: Aggiunta centroidi H3 ──
+    # Per ogni cella H3 si calcolano le coordinate lat/lng del centroide,
+    # necessarie per posizionare gli esagoni sulla mappa Kepler.
+    print("\n5. Adding H3 cell centroids (lat/lng for map positioning)...")
     aggregated_df = add_h3_centroids(aggregated_df)
+    print("\n   >>> Anteprima finale Spark (con coordinate centroide per ogni cella):")
+    aggregated_df.show(5, truncate=False)
 
-    # Convert to Pandas for visualization
-    print("\n6. Converting to Pandas DataFrame...")
+    # ── Step 2.6: Conversione a Pandas ──
+    # Il DataFrame Spark viene convertito in Pandas per l'uso con Kepler.gl
+    # e per le analisi statistiche successive.
+    print("\n6. Converting Spark DataFrame to Pandas...")
     result_pdf = aggregated_df.toPandas()
+    print("\n   >>> Anteprima Pandas DataFrame finale:")
+    print(result_pdf.head(5).to_string())
 
     print("\n" + "="*50)
     print(f"Processing complete! {len(result_pdf)} H3 cells")

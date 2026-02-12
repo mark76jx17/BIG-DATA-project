@@ -57,7 +57,12 @@ def run_analysis(use_cached_data: bool = False,
     print(f"  - H3 Resolution: {H3_RESOLUTION}")
     print(f"  - Well-served threshold: {WELL_SERVED_THRESHOLD}+ services")
 
-    # Step 1: Load or download data
+    # ══════════════════════════════════════════════════
+    # STEP 1: Data Acquisition (Acquisizione dati)
+    # Si scaricano i POI (Points of Interest) da OpenStreetMap per le città
+    # configurate, oppure si caricano da cache (file parquet).
+    # Il risultato è un GeoDataFrame con geometrie, tag OSM e città.
+    # ══════════════════════════════════════════════════
     print("\n" + "=" * 50)
     print("STEP 1: Data Acquisition")
     print("=" * 50)
@@ -77,8 +82,24 @@ def run_analysis(use_cached_data: bool = False,
     print(f"\nTotal POIs: {len(gdf_pois)}")
     print(f"Distribution by city:")
     print(gdf_pois['city'].value_counts())
+    print(gdf_pois.info())
+    print(f"\nAvailable columns: {list(gdf_pois.columns)}")
+    # dim
+    print(f"GeoDataFrame shape: {gdf_pois.shape}")
 
-    # Step 2: Process with PySpark
+    # Anteprima: le prime 5 righe del GeoDataFrame grezzo
+    # Ogni riga è un POI con la sua geometria (punto/poligono), tag OSM e città
+    print("\n>>> Anteprima GeoDataFrame grezzo (dati scaricati da OSM):")
+    cols_to_show = [c for c in ['geometry', 'city', 'amenity', 'leisure', 'shop', 'healthcare'] if c in gdf_pois.columns]
+    print(gdf_pois[cols_to_show].head(5).to_string())
+
+    # ══════════════════════════════════════════════════
+    # STEP 2: PySpark Processing
+    # Il GeoDataFrame viene convertito in Spark DataFrame, ogni POI viene
+    # categorizzato, indicizzato con H3 e aggregato per cella esagonale.
+    # (I sotto-passaggi 2.1–2.6 sono dettagliati in spark_processor.py)
+    # ══════════════════════════════════════════════════
+
     print("\n" + "=" * 50)
     print("STEP 2: PySpark Processing")
     print("=" * 50)
@@ -88,7 +109,18 @@ def run_analysis(use_cached_data: bool = False,
     try:
         df_aggregated = process_pois_with_spark(spark, gdf_pois)
 
-        # Step 3: Analytics
+        # Anteprima del risultato finale dello Step 2
+        print("\n>>> Risultato Step 2 - DataFrame aggregato per cella H3 (Pandas):")
+        print(df_aggregated.head(5).to_string())
+        print(f"\n   Colonne: {list(df_aggregated.columns)}")
+        print(f"   Righe totali (celle H3 uniche): {len(df_aggregated)}")
+
+        # ══════════════════════════════════════════════════
+        # STEP 3: Analytics
+        # Si calcolano statistiche descrittive (media, mediana, std, max, min)
+        # e metriche di accessibilità ("città dei 15 minuti") per ogni città.
+        # Una cella è "well-served" se ha >= 3 servizi.
+        # ══════════════════════════════════════════════════
         print("\n" + "=" * 50)
         print("STEP 3: Analytics")
         print("=" * 50)
@@ -97,7 +129,7 @@ def run_analysis(use_cached_data: bool = False,
 
         # City comparison
         comparison = compare_cities(df_aggregated)
-        print("\nCity Comparison Table:")
+        print("\n>>> Tabella comparativa tra città:")
         print(comparison.to_string(index=False))
 
         # Save processed data
@@ -110,7 +142,12 @@ def run_analysis(use_cached_data: bool = False,
             comparison.to_csv(comparison_csv, index=False)
             print(f"Comparison table saved to: {comparison_csv}")
 
-        # Step 4: Elasticsearch Indexing
+        # ══════════════════════════════════════════════════
+        # STEP 4: Elasticsearch Indexing (opzionale)
+        # I dati aggregati vengono indicizzati in Elasticsearch per abilitare
+        # ricerche rapide per città, categoria e numero minimo di servizi.
+        # Ogni documento ES corrisponde a una cella H3.
+        # ══════════════════════════════════════════════════
         if enable_es:
             print("\n" + "=" * 50)
             print("STEP 4: Elasticsearch Indexing")
@@ -124,7 +161,13 @@ def run_analysis(use_cached_data: bool = False,
                 print(f"\n  Elasticsearch not available: {e}")
                 print("  Skipping ES indexing. Pipeline continues.")
 
-        # Step 5: Visualization
+        # ══════════════════════════════════════════════════
+        # STEP 5: Visualization
+        # Si generano mappe interattive HTML con Kepler.gl:
+        # - Mappa 3D: altezza esagoni = densità servizi (service_count)
+        # - Mappa split: confronto visivo tra città
+        # - Mappa categorie: un layer per ogni tipo di servizio (toggle on/off)
+        # ══════════════════════════════════════════════════
         if create_maps:
             print("\n" + "=" * 50)
             print("STEP 5: Visualization")

@@ -1,5 +1,0 @@
-city,total_h3_cells,total_services,avg_services_per_cell,median_services,max_services,service_coverage_std,Health_total,Education_total,Food_total,Food Retail_total,Retail_total,Services_total,Financial_total,Public Services_total,Security_total,Sports_total,Recreation_total,Culture_total,Religion_total,Transportation_total,Tourism_total,Professional Services_total,Public Utilities_total
-Pavia,534,1413,2.646067415730337,1.0,23,3.2170123361095637,61,101,219,78,27,31,27,25,9,223,215,25,43,56,17,6,250
-Cagliari,900,2580,2.8666666666666667,2.0,37,3.152765969617292,91,188,536,142,52,37,36,50,21,551,328,73,102,44,112,10,207
-Lecco,613,1617,2.637846655791191,2.0,40,3.427494072492322,49,53,165,47,17,39,35,42,9,108,87,19,52,30,620,7,238
-Nuoro,195,376,1.9282051282051282,1.0,12,1.666830549701098,16,25,63,32,8,3,7,16,6,68,24,21,26,4,23,0,34
