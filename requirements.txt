@@ -20,5 +20,8 @@ pyarrow>=12.0.0  # For Arrow optimization in PySpark
 # Visualization
 keplergl>=0.3.2
 
+# Elasticsearch
+elasticsearch==8.17.0
+
 # Utilities
 tqdm>=4.65.0  # Progress bars (optional)

@@ -1,14 +1,108 @@
-# The BIG-DATA project
-Interactive map showing access to basic services: 
-Objective: Show in an interactive map the number of different basic services per H3 unit (https://www.uber.com/en-ES/blog/h3/) for the cities of Pavia and Cagliari. 
-kepler.gl-hexagon.png
+# The BIG-DATA Project
 
-Example of basic services:
-Health: hospital, pharmacy, dentist, ...
-Education: School, Kindergarten, University, library
-Food: Supermarket, Market,...
-Security: Police, fire fighters...
-Public services: Post office, City council
-Sports: Pool, gym, ...
+## Objective
 
-Tentative Workflow: Download the data from openstreetmap, investigating which is the best way to do it (e.g GeoFabric, Overpass) and the services available, process it (e.g in Python + PySpark) to get the POIs and location and load it to Spark, group the data per H3 cell. Use elasticsearch to index/find per cell h3 the type of service (health, education) and represent it as a Kepler.gl map.
+Create an **interactive map** showing access to basic services for the cities of **Pavia** and **Cagliari** and other cities.
+
+The map displays the **number of different basic services per H3 unit**  
+(H3 documentation: https://www.uber.com/en-ES/blog/h3/).
+
+The final visualization is implemented using **Kepler.gl**.
+---
+
+## Examples of Basic Services
+
+### Health
+- Hospital  
+- Pharmacy  
+- Dentist  
+- Clinics  
+
+### Education
+- School  
+- Kindergarten  
+- University  
+- Library  
+
+### Food
+- Supermarket  
+- Market  
+
+### Security
+- Police  
+- Fire station  
+
+### Public Services
+- Post office  
+- City council  
+
+### Sports
+- Swimming pool  
+- Gym  
+
+---
+
+## Workflow
+
+1. **Download data from OpenStreetMap**
+   - Osmx
+   - Identify available services and categories
+
+2. **Process the data**
+   - Extract POIs and locations
+   - Tools:
+     - Python
+     - PySpark
+
+3. **Load into Apache Spark**
+   - Compute H3 index for each POI
+   - Group services per H3 cell
+
+4. **Index with Elasticsearch**
+   - Index by:
+     - H3 cell
+     - Service type (health, education, etc.)
+
+5. **Visualization**
+   - Use **Kepler.gl**
+   - Display aggregated services per H3 hexagon
+
+---
+
+# How to Execute && Activate Elasticsearch
+
+### Requirements
+- Install **Docker**
+- Install dependencies from `requirements.txt`
+
+### Run Elasticsearch Container
+
+```bash
+sudo docker rm -f elasticsearch 2>/dev/null
+
+sudo docker run -d \
+  --name elasticsearch \
+  -p 9200:9200 \
+  -m 1g \
+  -e discovery.type=single-node \
+  -e xpack.security.enabled=false \
+  -e ES_JAVA_OPTS="-Xms512m -Xmx512m" \
+  -e http.cors.enabled=true \
+  -e 'http.cors.allow-origin="/.*/"' \
+  -e http.cors.allow-methods=OPTIONS,HEAD,GET,POST \
+  -e http.cors.allow-headers=Content-Type \
+  elasticsearch:8.17.0
+
+
+python3 run_analysis.py
+
+# or, if data is alredy downloaded  
+
+python3 run_analysis.py --cached
+```
+to view the map
+```bash
+
+python3 output/launch_explorer.py
+
+```
