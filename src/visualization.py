@@ -224,8 +224,7 @@ def get_kepler_aggregate_config(center_lat: float = 43.7,
         config['config']['visState']['layers'] = []
 
         for i, cat in enumerate(categories_info.keys()):
-            field_name = "service_count" if cat == "Total" else cat
-            palette = KEPLER_COLOR_RANGE if cat == "Total" else PALETTES[cat]
+            field_name = "service_count" if cat == "service_count" else cat
             new_layer = {
                     'id': f'layer-{cat.lower().replace(" ", "-")}',
                     'type': 'hexagonId',
@@ -513,9 +512,12 @@ def query_es(city=None, category=None, min_services=None):
     if city:
         must.append({"term": {"city": city}})
     if category:
-        must.append({"term": {"categories_present": category}})
+        must.append({"range": {category: {"gte": 1}}})
+    else:
+        category = "service_count"
+        must.append({"range": {category: {"gte": 1}}})
     if min_services:
-        must.append({"range": {"service_count": {"gte": int(min_services)}}})
+        must.append({"range": {category: {"gte": int(min_services)}}})
     q = {"bool": {"must": must}} if must else {"match_all": {}}
     r = es.search(index=ELASTICSEARCH_INDEX, query=q, size=10000)
     hits = [h["_source"] for h in r["hits"]["hits"]]

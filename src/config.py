@@ -220,7 +220,7 @@ KEPLER_COLOR_RANGE = {
 }
 
 PALETTES = {
-    'Total':                 ['#5A1846', '#900C3F', '#C70039', '#E3611C', '#F1920E', '#FFC300'], 
+    'service_count':         ['#5A1846', '#900C3F', '#C70039', '#E3611C', '#F1920E'], 
     'Health':                ['#fee5d9', '#fcae91', '#fb6a4a', '#de2d26', '#a50f15'], # Rossi
     'Education':             ['#fff7bc', '#fee391', '#fec44f', '#fe9929', '#ec7014'], # Giallo/Arancio
     'Food':                  ['#ffedff', '#efbbff', '#d896ff', '#be29ec', '#660066'], # Magenta/Viola
