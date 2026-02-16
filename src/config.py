@@ -243,31 +243,3 @@ PALETTES = {
 # Elasticsearch configuration
 ELASTICSEARCH_HOST = "http://localhost:9200"
 ELASTICSEARCH_INDEX = "urban_services_h3"
-CATEGORY_COLORS = {
-    # AREA SOCIALE E CULTURALE (Toni Viola/Rosa/Indaco)
-    'Culture': [155, 89, 182],          # Ametista
-    'Religion': [103, 58, 183],         # Deep Purple
-    'Tourism': [233, 30, 99],           # Rosa Intenso
-    'Recreation': [142, 68, 173],       # Prugna
-    
-    # AREA ESSENZIALE E SALUTE (Toni Rossi/Arancio)
-    'Health': [231, 76, 60],            # Rosso Soft
-    'Security': [192, 57, 43],          # Granata (Senso di urgenza/attenzione)
-    'Education': [243, 156, 18],        # Ambra (Energia intellettuale)
-    
-    # AREA COMMERCIALE E FOOD (Toni Giallo/Oro)
-    'Food': [255, 193, 7],              # Giallo ocra
-    'Food Retail': [255, 160, 0],       # Arancio dorato
-    'Retail': [211, 84, 0],             # Zucca (Distingue dal food)
-
-    # AREA SERVIZI E PROFESSIONI (Toni Blu/Azzurro)
-    'Financial': [41, 128, 185],        # Blu professione
-    'Professional Services': [52, 152, 219], # Azzurro chiaro
-    'Services': [22, 160, 133],         # Ottanio (Distinzione visiva)
-
-    # AREA PUBBLICA E TRASPORTI (Toni Verdi/Grigi)
-    'Public Services': [39, 174, 96],    # Verde Smeraldo
-    'Public Utilities': [26, 188, 156],  # Turchese scuro
-    'Transportation': [127, 140, 141],   # Grigio Asfalto
-    'Sports': [46, 204, 113]             # Verde Prato (Energia fisica)
-}

@@ -13,7 +13,7 @@ import pandas as pd
 import geopandas as gpd
 from typing import Dict, List, Optional
 
-from config import CATEGORY_MAPPING, H3_RESOLUTION, SERVICE_CATEGORIES
+from config import CATEGORY_MAPPING, SERVICE_CATEGORIES
 
 
 def create_spark_session(app_name: str = "UrbanServicesAnalysis",
@@ -123,7 +123,7 @@ def categorize_services_spark(df: DataFrame,
     return df
 
 
-def calculate_h3_index_udf():
+def calculate_h3_index_udf(h3_resolution: int):
     """
     Create a UDF for calculating H3 index from lat/lng.
 
@@ -135,13 +135,13 @@ def calculate_h3_index_udf():
         if lat is None or lng is None:
             return None
         try:
-            return h3.latlng_to_cell(lat, lng, H3_RESOLUTION)
+            return h3.latlng_to_cell(lat, lng, h3_resolution)
         except:
             return None
     return h3_index_udf
 
 
-def add_h3_indices(df: DataFrame) -> DataFrame:
+def add_h3_indices(df: DataFrame, h3_resolution: int=10) -> DataFrame:
     """
     Add H3 spatial index to each POI.
 
@@ -151,13 +151,13 @@ def add_h3_indices(df: DataFrame) -> DataFrame:
     Returns:
         DataFrame with h3_index column added
     """
-    h3_udf = calculate_h3_index_udf()
+    h3_udf = calculate_h3_index_udf(h3_resolution)
     df = df.withColumn('h3_index', h3_udf(F.col('lat'), F.col('lng')))
 
     # Filter out null h3 indices
     df = df.filter(F.col('h3_index').isNotNull())
 
-    print(f"H3 indices calculated at resolution {H3_RESOLUTION}")
+    print(f"H3 indices calculated at resolution {h3_resolution}")
     return df
 
 
@@ -224,7 +224,8 @@ def add_h3_centroids(df: DataFrame) -> DataFrame:
 
 
 def process_pois_with_spark(spark: SparkSession,
-                            gdf: gpd.GeoDataFrame) -> pd.DataFrame:
+                            gdf: gpd.GeoDataFrame,
+                            h3_resolution: int) -> pd.DataFrame:
     """
     Complete processing pipeline using PySpark.
 
@@ -267,7 +268,7 @@ def process_pois_with_spark(spark: SparkSession,
     # I POI con coordinate non valide vengono filtrati.
     
     print("\n3. Calculating H3 spatial indices...")
-    spark_df = add_h3_indices(spark_df)
+    spark_df = add_h3_indices(spark_df, h3_resolution)
     print("\n   >>> Anteprima con indice H3 (ogni POI ha la sua cella esagonale):")
     spark_df.select('lat', 'lng', 'city', 'category', 'h3_index').show(5, truncate=False)
 

@@ -7,122 +7,7 @@ import pandas as pd
 from keplergl import KeplerGl
 from typing import Dict, Optional, List
 
-from config import SERVICE_CATEGORIES, KEPLER_COLOR_RANGE, CATEGORY_COLORS, PALETTES, LOCATIONS
-
-def get_kepler_3d_config(center_lat: float = 43.7,
-                         center_lng: float = 9.5,
-                         zoom: float = 8) -> Dict:
-    """
-    Get KeplerGL configuration for 3D hexagon visualization.
-
-    Args:
-        center_lat: Map center latitude
-        center_lng: Map center longitude
-        zoom: Initial zoom level
-
-    Returns:
-        KeplerGL configuration dictionary
-    """
-    # Build tooltip fields
-    tooltip_fields = [
-        {'name': 'city', 'format': None},
-        {'name': 'service_count', 'format': None}
-    ]
-
-    for cat in SERVICE_CATEGORIES:
-        tooltip_fields.append({'name': cat, 'format': None})
-
-    config = {
-        'version': 'v1',
-        'config': {
-            'visState': {
-                'filters': [],
-                'layers': [
-                    {
-                        'id': 'h3-3d-layer',
-                        'type': 'hexagonId',
-                        'config': {
-                            'dataId': 'services',
-                            'label': 'Service Density 3D',
-                            'color': [255, 203, 153],
-                            'columns': {'hex_id': 'h3_index'},
-                            'isVisible': True,
-                            'visConfig': {
-                                'opacity': 0.8,
-                                'colorRange': KEPLER_COLOR_RANGE,
-                                'coverage': 1,
-                                'enable3d': True,
-                                'sizeRange': [0, 500],
-                                'coverageRange': [0, 1],
-                                'elevationScale': 5,
-                                'enableElevationZoomFactor': True
-                            },
-                            'hidden': False,
-                            'textLabel': [
-                                {
-                                    'field': None,
-                                    'color': [255, 255, 255],
-                                    'size': 18,
-                                    'offset': [0, 0],
-                                    'anchor': 'start',
-                                    'alignment': 'center'
-                                }
-                            ]
-                        },
-                        'visualChannels': {
-                            'colorField': {'name': 'service_count', 'type': 'integer'},
-                            'colorScale': 'quantile',
-                            'sizeField': {'name': 'service_count', 'type': 'integer'},
-                            'sizeScale': 'linear',
-                            'coverageField': None,
-                            'coverageScale': 'linear'
-                        }
-                    }
-                ],
-                'interactionConfig': {
-                    'tooltip': {
-                        'fieldsToShow': {'services': tooltip_fields},
-                        'compareMode': False,
-                        'compareType': 'absolute',
-                        'enabled': True
-                    },
-                    'brush': {'size': 0.5, 'enabled': False},
-                    'geocoder': {'enabled': False},
-                    'coordinate': {'enabled': False}
-                },
-                'layerBlending': 'normal',
-                'splitMaps': [],
-                'animationConfig': {'currentTime': None, 'speed': 1}
-            },
-            'mapState': {
-                'bearing': 24,
-                'dragRotate': True,
-                'latitude': center_lat,
-                'longitude': center_lng,
-                'pitch': 50,
-                'zoom': zoom,
-                'isSplit': False
-            },
-            'mapStyle': {
-                'styleType': 'dark',
-                'topLayerGroups': {},
-                'visibleLayerGroups': {
-                    'label': True,
-                    'road': True,
-                    'border': True,
-                    'building': True,
-                    'water': True,
-                    'land': True,
-                    '3d building': False
-                },
-                'threeDBuildingColor': [9.665468314072013, 17.18305478057247, 31.1442867897876],
-                'mapStyles': {}
-            }
-        }
-    }
-
-    return config
-
+from config import SERVICE_CATEGORIES, KEPLER_COLOR_RANGE, PALETTES, LOCATIONS
 
 def get_kepler_aggregate_config(df: pd.DataFrame=None,
                                 center_lat: float = 43.7,
@@ -235,7 +120,7 @@ def get_kepler_aggregate_config(df: pd.DataFrame=None,
                             },
                             'enable3d': True,
                             'elevationScale': 5,
-                            'sizeRange': [0, int(series.max() * 50)]
+                            'sizeRange': [0, int(series.max() * 35)]
                         }
                     },
                     'visualChannels': {
@@ -250,38 +135,6 @@ def get_kepler_aggregate_config(df: pd.DataFrame=None,
             config['config']['visState']['layers'].append(new_layer)
 
     return config
-
-
-def create_3d_map(df: pd.DataFrame,
-                  height: int = 700,
-                  config: Optional[Dict] = None) -> KeplerGl:
-    """
-    Create a 3D interactive map with KeplerGL.
-
-    Args:
-        df: DataFrame with aggregated H3 data
-        height: Map height in pixels
-        config: Optional custom configuration
-
-    Returns:
-        KeplerGl map object
-    """
-    if config is None:
-        # Calculate center from data
-        center_lat = df['lat'].mean()
-        center_lng = df['lng'].mean()
-        config = get_kepler_3d_config(center_lat, center_lng)
-
-    map_3d = KeplerGl(config=config)
-    map_3d.add_data(data=df, name='services')
-
-    print("3D map created!")
-    print("\nMap controls:")
-    print("  - Hold Shift + drag: rotate view")
-    print("  - Scroll: zoom")
-    print("  - Drag: move map")
-
-    return map_3d
 
 
 def create_aggregate_map(df: pd.DataFrame,
@@ -604,20 +457,4 @@ http.server.HTTPServer(("", PORT), Handler).serve_forever()
 
 
 if __name__ == "__main__":
-    # Test with sample data
-    sample_data = {
-        'h3_index': ['891f1d48127ffff', '891f1d48137ffff'],
-        'city': ['Pavia', 'Pavia'],
-        'service_count': [5, 3],
-        'lat': [45.186, 45.187],
-        'lng': [9.155, 9.156],
-        'Health': [2, 1],
-        'Education': [1, 1],
-        'Food': [2, 1]
-    }
-
-    df = pd.DataFrame(sample_data)
-
-    # Create map (won't display in terminal)
-    map_3d = create_3d_map(df)
-    print(f"Map object created: {type(map_3d)}")
+    ...

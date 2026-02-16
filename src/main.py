@@ -20,7 +20,7 @@ from analytics import (
     print_report,
     compare_cities
 )
-from visualization import create_3d_map, create_aggregate_map, save_map, save_map_with_es, create_category_map
+from visualization import save_map, save_map_with_es, create_category_map
 from elasticsearch_integration import (
     create_es_client, create_index, index_h3_data, print_es_summary
 )
@@ -36,7 +36,9 @@ def run_analysis(use_cached_data: bool = False,
                  save_data: bool = True,
                  create_maps: bool = True,
                  enable_es: bool = True,
-                 output_dir: str = 'output') -> None:
+                 output_dir: str = 'output',
+                 h3_resolution: int=10
+                 ) -> None:
     """
     Run the complete urban services analysis pipeline.
 
@@ -107,7 +109,7 @@ def run_analysis(use_cached_data: bool = False,
     spark = create_spark_session()
 
     try:
-        df_aggregated = process_pois_with_spark(spark, gdf_pois)
+        df_aggregated = process_pois_with_spark(spark, gdf_pois, h3_resolution)
 
         # Anteprima del risultato finale dello Step 2
         print("\n>>> Risultato Step 2 - DataFrame aggregato per cella H3 (Pandas):")
@@ -139,9 +141,9 @@ def run_analysis(use_cached_data: bool = False,
             df_aggregated.to_csv(output_csv, index=False)
             print(f"\nAggregated data saved to: {output_csv}")
 
-            comparison_csv = f'{output_dir}/city_comparison.csv'
-            comparison.to_csv(comparison_csv, index=False)
-            print(f"Comparison table saved to: {comparison_csv}")
+            # comparison_csv = f'{output_dir}/city_comparison.csv'
+            # comparison.to_csv(comparison_csv, index=False)
+            # print(f"Comparison table saved to: {comparison_csv}")
 
         # ══════════════════════════════════════════════════
         # STEP 4: Elasticsearch Indexing (opzionale)
@@ -174,17 +176,17 @@ def run_analysis(use_cached_data: bool = False,
             print("STEP 5: Visualization")
             print("=" * 50)
 
-            print("\nCreating 3D interactive map...")
-            map_3d = create_3d_map(df_aggregated)
-            save_map(map_3d, f'{output_dir}/services_map_3d.html')
+            # print("\nCreating 3D interactive map...")
+            # map_3d = create_3d_map(df_aggregated)
+            # save_map(map_3d, f'{output_dir}/services_map_3d.html')
 
-            if enable_es:
-                print("\nCreating ES search page...")
-                save_map_with_es(map_3d, f'{output_dir}/services_map_3d.html')
+            # if enable_es:
+            #     print("\nCreating ES search page...")
+            #     save_map_with_es(map_3d, f'{output_dir}/services_map_3d.html')
 
-            print("\nCreating split comparison map...")
-            map_split = create_aggregate_map(df_aggregated)
-            save_map(map_split, f'{output_dir}/services_map_split.html')
+            # print("\nCreating split comparison map...")
+            # map_split = create_aggregate_map(df_aggregated)
+            # save_map(map_split, f'{output_dir}/services_map_split.html')
 
             print("\nCreating category map...")
             map_split = create_category_map(output_csv, categories=SERVICE_CATEGORIES)
@@ -246,6 +248,13 @@ def main():
         help='Output directory (default: output)'
     )
 
+    parser.add_argument(
+        '--h3_resolution',
+        type=int,
+        default=10,
+        help='The resolution for map exagons (integer, default: 10)'
+        )
+
     args = parser.parse_args()
 
     run_analysis(
@@ -253,7 +262,8 @@ def main():
         save_data=not args.no_save,
         create_maps=not args.no_maps,
         enable_es=not args.no_es,
-        output_dir=args.output
+        output_dir=args.output,
+        h3_resolution=args.h3_resolution
     )
 
 
