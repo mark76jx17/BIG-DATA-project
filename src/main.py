@@ -133,6 +133,7 @@ def run_analysis(use_cached_data: bool = False,
         print(comparison.to_string(index=False))
 
         # Save processed data
+        output_csv = None
         if save_data:
             output_csv = f'{output_dir}/services_h3_aggregated.csv'
             df_aggregated.to_csv(output_csv, index=False)
@@ -186,7 +187,7 @@ def run_analysis(use_cached_data: bool = False,
             save_map(map_split, f'{output_dir}/services_map_split.html')
 
             print("\nCreating category map...")
-            map_split = create_category_map(df_aggregated, categories=SERVICE_CATEGORIES)
+            map_split = create_category_map(output_csv, categories=SERVICE_CATEGORIES)
             save_map(map_split, f'{output_dir}/category_map.html')
 
 

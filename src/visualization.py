@@ -124,10 +124,14 @@ def get_kepler_3d_config(center_lat: float = 43.7,
     return config
 
 
-def get_kepler_aggregate_config(center_lat: float = 43.7,
+def get_kepler_aggregate_config(df: pd.DataFrame=None,
+                                center_lat: float = 43.7,
                                 center_lng: float = 9.5,
                                 zoom: float = 7,
                                 categories_info: dict|None=None,
+                                city: str=None,
+                                category: str=None,
+                                min_s: int=0
                             ) -> Dict:
     """
     Get KeplerGL configuration for split map comparison.
@@ -153,49 +157,8 @@ def get_kepler_aggregate_config(center_lat: float = 43.7,
         'version': 'v1',
         'config': {
             'visState': {
-                'filters': [
-                    {
-                        'dataId': ['services'],
-                        'id': 'city-filter',
-                        'name': ['city'],
-                        'type': 'multiSelect',
-                        'value': [],
-                        'enlarged': False,
-                        'plotType': 'histogram',
-                        'animationWindow': 'free',
-                        'yAxis': None,
-                        'speed': 1
-                    }
-                ],
-                # 'layers': [
-                #     {
-                #         'id': 'h3-split',
-                #         'type': 'hexagonId',
-                #         'config': {
-                #             'dataId': 'services',
-                #             'label': 'Services',
-                #             'color': [18, 147, 154],
-                #             'columns': {'hex_id': 'h3_index'},
-                #             'isVisible': True,
-                #             'visConfig': {
-                #                 'opacity': 0.8,
-                #                 'colorRange': KEPLER_COLOR_RANGE,
-                #                 'coverage': 1,
-                #                 'enable3d': True,
-                #                 'elevationScale': 5,
-                #                 'sizeRange': [0, 500]
-                #             }
-                #         },
-                #         'visualChannels': {
-                #             'colorField': {'name': 'service_count', 'type': 'integer'},
-                #             'colorScale': 'linear',
-                #             'sizeField': {'name': 'service_count', 'type': 'integer'},
-                #             'sizeScale': 'linear',
-                #             'opacityField': {'name': 'service_count', 'type': 'integer'},
-                #             'opacityScale': 'linear'
-                #         }
-                #     }
-                # ],
+                'filters': [],
+                'layers': [],
                 'interactionConfig': {
                     'tooltip': {
                         'fieldsToShow': {'services': tooltip_fields},
@@ -220,10 +183,38 @@ def get_kepler_aggregate_config(center_lat: float = 43.7,
         }
     }
 
-    if categories_info != None:
-        config['config']['visState']['layers'] = []
+    if city:
+        if df is not None:
+            config['config']['mapState']['latitude'] = df[df["city"] == city]["lat"].mean()
+            config['config']['mapState']['longitude'] = df[df["city"] == city]["lng"].mean()
+            config['config']['mapState']['zoom'] = 12
 
+        new_filter = {
+                "id": f'filter-{city.lower().replace(" ", "-")}',
+                "dataId": "services",
+                "name": ["city"],
+                "type": "multiSelect",
+                "value": [city],
+                "plotType": "histogram",
+                "animationWindow": "free",
+              }
+        config['config']['visState']['filters'].append(new_filter)
+
+    if category:
+        new_filter = {
+                "id": f'filter-{category.lower().replace(" ", "-")}',
+                "dataId": "services",
+                "name": [category],
+                "type": "range",
+                "value": [min_s, int(df[category].max())],
+                "plotType": "histogram",
+                "animationWindow": "free",
+              }
+        config['config']['visState']['filters'].append(new_filter)
+
+    if categories_info != None:
         for i, cat in enumerate(categories_info.keys()):
+            series = df[cat]
             field_name = "service_count" if cat == "service_count" else cat
             new_layer = {
                     'id': f'layer-{cat.lower().replace(" ", "-")}',
@@ -244,7 +235,7 @@ def get_kepler_aggregate_config(center_lat: float = 43.7,
                             },
                             'enable3d': True,
                             'elevationScale': 5,
-                            'sizeRange': [0, 500]
+                            'sizeRange': [0, int(series.max() * 50)]
                         }
                     },
                     'visualChannels': {
@@ -257,7 +248,6 @@ def get_kepler_aggregate_config(center_lat: float = 43.7,
                     }
                 }
             config['config']['visState']['layers'].append(new_layer)
-
 
     return config
 
@@ -311,7 +301,7 @@ def create_aggregate_map(df: pd.DataFrame,
     if config is None:
         center_lat = df['lat'].mean()
         center_lng = df['lng'].mean()
-        config = get_kepler_aggregate_config(center_lat, center_lng)
+        config = get_kepler_aggregate_config(center_lat=center_lat, center_lng=center_lng)
 
     print("testa", df.head())
 
@@ -338,7 +328,7 @@ def save_map(kepler_map: KeplerGl,
     print(f"Map saved to: {filename}")
 
 
-def create_category_map(df: pd.DataFrame,
+def create_category_map(csv_path: pd.DataFrame,
                         categories: str,
                         height: int = 700) -> KeplerGl:
     """
@@ -355,13 +345,19 @@ def create_category_map(df: pd.DataFrame,
     # if category not in df.columns:
     #     raise ValueError(f"Category '{category}' not found in data")
 
-    center_lat = df['lat'].mean()
-    center_lng = df['lng'].mean()
+    # center_lat = df['lat'].mean()
+    # center_lng = df['lng'].mean()
 
-    config = get_kepler_aggregate_config(center_lat, center_lng, categories_info=PALETTES)
+    csvData = None
+    with open(csv_path, mode="r") as file:
+        csvData = file.read()
+
+    df = pd.read_csv(csv_path)
+
+    config = get_kepler_aggregate_config(df, categories_info=PALETTES)
 
     map_cat = KeplerGl(config=config)
-    map_cat.add_data(data=df, name='services')
+    map_cat.add_data(data=csvData, name='services')
 
     print(f"Map for category created!")
 
@@ -534,18 +530,27 @@ def query_es(city=None, category=None, min_services=None):
     return df
 
 
-def make_filtered_map(df, category=None):
+def make_filtered_map(city=None, category=None, min_s=None):
     from visualization import get_kepler_aggregate_config
-    center_lat = df["lat"].mean()
-    center_lng = df["lng"].mean()
-    if category and category in PALETTES:
-        config = get_kepler_aggregate_config(center_lat, center_lng,
-                                              categories_info={category: PALETTES[category]})
-    else:
-        config = get_kepler_aggregate_config(center_lat, center_lng,
-                                              categories_info=PALETTES)
+    # center_lat = df["lat"].mean()
+    # center_lng = df["lng"].mean()
+
+    csvData = None
+    with open("./services_h3_aggregated.csv", mode="r") as file:
+        csvData = file.read()
+    df = pd.read_csv("./services_h3_aggregated.csv")
+
+    if category == None: category = "service_count"
+    if min_s == None: min_s = 0
+
+    config = get_kepler_aggregate_config(df=df,
+                                        categories_info={category: PALETTES[category]},
+                                        city=city,
+                                        category=category,
+                                        min_s=int(min_s))
+
     m = KeplerGl(config=config)
-    m.add_data(data=df, name="services")
+    m.add_data(data=csvData, name="services")
     tmp = os.path.join(tempfile.gettempdir(), "es_filtered_map.html")
     m.save_to_html(file_name=tmp, read_only=False)
     with open(tmp, "rb") as f:
@@ -561,14 +566,14 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             category = params.get("category", [None])[0]
             min_s = params.get("min_services", [None])[0]
             try:
-                df = query_es(city, category, min_s)
-                if df is None or df.empty:
-                    self.send_response(200)
-                    self.send_header("Content-Type", "text/html")
-                    self.end_headers()
-                    self.wfile.write(b"<html><body style=background:#0f0f23;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh><h2>No results found</h2></body></html>")
-                    return
-                html_bytes = make_filtered_map(df, category)
+                # df = query_es(city, category, min_s)
+                # if df is None or df.empty:
+                #     self.send_response(200)
+                #     self.send_header("Content-Type", "text/html")
+                #     self.end_headers()
+                #     self.wfile.write(b"<html><body style=background:#0f0f23;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh><h2>No results found</h2></body></html>")
+                #     return
+                html_bytes = make_filtered_map(city, category, min_s)
                 self.send_response(200)
                 self.send_header("Content-Type", "text/html")
                 self.end_headers()
