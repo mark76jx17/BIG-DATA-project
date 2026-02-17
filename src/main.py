@@ -5,13 +5,14 @@ Orchestrates the complete analysis pipeline using PySpark.
 
 import os
 import sys
-import argparse
 from pathlib import Path
+
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning, module="keplergl.keplergl") 
 
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
-from config import LOCATIONS, H3_RESOLUTION, WELL_SERVED_THRESHOLD, SERVICE_CATEGORIES
 from data_loader import download_all_pois, save_raw_data, load_raw_data
 from spark_processor import create_spark_session, process_pois_with_spark
 from analytics import (
@@ -24,7 +25,7 @@ from visualization import save_map, save_map_with_es, create_category_map
 from elasticsearch_integration import (
     create_es_client, create_index, index_h3_data, print_es_summary
 )
-
+import yaml
 
 def setup_directories():
     """Create necessary directories for data and output."""
@@ -32,12 +33,10 @@ def setup_directories():
     Path('output').mkdir(exist_ok=True)
 
 
-def run_analysis(use_cached_data: bool = False,
-                 save_data: bool = True,
-                 create_maps: bool = True,
-                 enable_es: bool = True,
+def run_analysis(enable_es: bool = True,
                  output_dir: str = 'output',
-                 h3_resolution: int=10
+                 config_path: str = "config.yaml",
+                 dataset_path: str = None
                  ) -> None:
     """
     Run the complete urban services analysis pipeline.
@@ -49,15 +48,19 @@ def run_analysis(use_cached_data: bool = False,
         enable_es: If True, index data into Elasticsearch
         output_dir: Directory for output files
     """
+
+    with open(config_path, mode="r") as f:
+        config = yaml.safe_load(f)
+
     setup_directories()
 
     print("=" * 70)
     print(" " * 15 + "URBAN SERVICES ANALYSIS WITH PYSPARK")
     print("=" * 70)
     print(f"\nConfiguration:")
-    print(f"  - Cities: {', '.join([loc['city'] for loc in LOCATIONS])}")
-    print(f"  - H3 Resolution: {H3_RESOLUTION}")
-    print(f"  - Well-served threshold: {WELL_SERVED_THRESHOLD}+ services")
+    print(f"  - Cities: {', '.join([loc['city'] for loc in config.get('LOCATIONS')])}")
+    print(f"  - H3 Resolution: {config.get('H3_RESOLUTION')}")
+    print(f"  - Well-served threshold: {config.get('WELL_SERVED_THRESHOLD')}+ services")
 
     # ══════════════════════════════════════════════════
     # STEP 1: Data Acquisition (Acquisizione dati)
@@ -69,29 +72,18 @@ def run_analysis(use_cached_data: bool = False,
     print("STEP 1: Data Acquisition")
     print("=" * 50)
 
-    cache_file = 'data/raw_pois.parquet'
+    print("Downloading POI data from OpenStreetMap...")
+    gdf_pois = download_all_pois(config)
 
-    if use_cached_data and os.path.exists(cache_file):
-        print(f"Loading cached data from {cache_file}...")
-        gdf_pois = load_raw_data(cache_file)
-    else:
-        print("Downloading POI data from OpenStreetMap...")
-        gdf_pois = download_all_pois()
-
-        if save_data:
-            save_raw_data(gdf_pois, cache_file)
 
     print(f"\nTotal POIs: {len(gdf_pois)}")
     print(f"Distribution by city:")
     print(gdf_pois['city'].value_counts())
     print(gdf_pois.info())
-    print(f"\nAvailable columns: {list(gdf_pois.columns)}")
-    # dim
-    print(f"GeoDataFrame shape: {gdf_pois.shape}")
 
     # Anteprima: le prime 5 righe del GeoDataFrame grezzo
     # Ogni riga è un POI con la sua geometria (punto/poligono), tag OSM e città
-    print("\n>>> Anteprima GeoDataFrame grezzo (dati scaricati da OSM):")
+    print("\n>>> Raw dataset preview (data downloaded by OSM):")
     cols_to_show = [c for c in ['geometry', 'city', 'amenity', 'leisure', 'shop', 'healthcare'] if c in gdf_pois.columns]
     print(gdf_pois[cols_to_show].head(5).to_string())
 
@@ -109,13 +101,13 @@ def run_analysis(use_cached_data: bool = False,
     spark = create_spark_session()
 
     try:
-        df_aggregated = process_pois_with_spark(spark, gdf_pois, h3_resolution)
+        df_aggregated = process_pois_with_spark(spark, gdf_pois, config)
 
         # Anteprima del risultato finale dello Step 2
-        print("\n>>> Risultato Step 2 - DataFrame aggregato per cella H3 (Pandas):")
+        print("\n>>> Result of Step 2 - DataFrame aggregated for H3 cell (Pandas):")
         print(df_aggregated.head(5).to_string())
-        print(f"\n   Colonne: {list(df_aggregated.columns)}")
-        print(f"   Righe totali (celle H3 uniche): {len(df_aggregated)}")
+        print(f"\n   Columns: {list(df_aggregated.columns)}")
+        print(f"   Total rows (unique H3 cells): {len(df_aggregated)}")
 
         # ══════════════════════════════════════════════════
         # STEP 3: Analytics
@@ -127,23 +119,22 @@ def run_analysis(use_cached_data: bool = False,
         print("STEP 3: Analytics")
         print("=" * 50)
 
-        print_report(df_aggregated)
+        print_report(df_aggregated, save_file=f"{output_dir}/city_report.txt", config=config)
 
         # City comparison
-        comparison = compare_cities(df_aggregated)
-        print("\n>>> Tabella comparativa tra città:")
+        comparison = compare_cities(df_aggregated, service_categories=config.get("SERVICE_CATEGORIES"))
+        print("\n>>> Comparative table of cities:")
         print(comparison.to_string(index=False))
 
-        # Save processed data
-        output_csv = None
-        if save_data:
-            output_csv = f'{output_dir}/services_h3_aggregated.csv'
-            df_aggregated.to_csv(output_csv, index=False)
-            print(f"\nAggregated data saved to: {output_csv}")
+        comparison.to_csv(f"{output_dir}/city_comparison.csv")
 
-            # comparison_csv = f'{output_dir}/city_comparison.csv'
-            # comparison.to_csv(comparison_csv, index=False)
-            # print(f"Comparison table saved to: {comparison_csv}")
+        # Save processed data
+
+        csv_data_name = "services_h3_aggregated.csv"
+        output_csv = f'{output_dir}/{csv_data_name}'
+        df_aggregated.to_csv(output_csv, index=False)
+        print(f"\nAggregated data saved to: {output_csv}")
+
 
         # ══════════════════════════════════════════════════
         # STEP 4: Elasticsearch Indexing (opzionale)
@@ -156,10 +147,10 @@ def run_analysis(use_cached_data: bool = False,
             print("STEP 4: Elasticsearch Indexing")
             print("=" * 50)
             try:
-                es = create_es_client()
-                create_index(es)
-                index_h3_data(es, df_aggregated)
-                print_es_summary(es)
+                es = create_es_client(config.get("ELASTICSEARCH_HOST"))
+                create_index(es, index_name=config.get("ELASTICSEARCH_INDEX"))
+                index_h3_data(es, df_aggregated, config)
+                print_es_summary(es, index_name=config.get("ELASTICSEARCH_INDEX"))
             except Exception as e:
                 print(f"\n  Elasticsearch not available: {e}")
                 print("  Skipping ES indexing. Pipeline continues.")
@@ -171,26 +162,18 @@ def run_analysis(use_cached_data: bool = False,
         # - Mappa split: confronto visivo tra città
         # - Mappa categorie: un layer per ogni tipo di servizio (toggle on/off)
         # ══════════════════════════════════════════════════
-        if create_maps:
-            print("\n" + "=" * 50)
-            print("STEP 5: Visualization")
-            print("=" * 50)
 
-            # print("\nCreating 3D interactive map...")
-            # map_3d = create_3d_map(df_aggregated)
-            # save_map(map_3d, f'{output_dir}/services_map_3d.html')
+        print("\n" + "=" * 50)
+        print("STEP 5: Visualization")
+        print("=" * 50)
 
-            # if enable_es:
-            #     print("\nCreating ES search page...")
-            #     save_map_with_es(map_3d, f'{output_dir}/services_map_3d.html')
+        map_name = "category_map.html"
 
-            # print("\nCreating split comparison map...")
-            # map_split = create_aggregate_map(df_aggregated)
-            # save_map(map_split, f'{output_dir}/services_map_split.html')
+        print("\nCreating category map...")
+        category_map = create_category_map(output_csv, config=config)
+        save_map(category_map, f'{output_dir}/{map_name}')
 
-            print("\nCreating category map...")
-            map_split = create_category_map(output_csv, categories=SERVICE_CATEGORIES)
-            save_map(map_split, f'{output_dir}/category_map.html')
+        save_map_with_es(category_map, map_name, config=config, config_path=config_path, csv_data_name=csv_data_name)
 
 
         print("\n" + "=" * 70)
@@ -200,72 +183,11 @@ def run_analysis(use_cached_data: bool = False,
         print(f"\nGenerated files in '{output_dir}/':")
         print("  - services_h3_aggregated.csv")
         print("  - city_comparison.csv")
-        if create_maps:
-            print("  - services_map_3d.html")
-            print("  - services_map_split.html")
+
+        print("Run python3 output/launch_explorer.py to run the city explorer!\n")
 
         return df_aggregated
 
     finally:
         spark.stop()
         print("\nSparkSession stopped.")
-
-
-def main():
-    """CLI entry point."""
-    parser = argparse.ArgumentParser(
-        description='Urban Services Analysis using PySpark and H3'
-    )
-
-    parser.add_argument(
-        '--cached', '-c',
-        action='store_true',
-        help='Use cached data instead of downloading'
-    )
-
-    parser.add_argument(
-        '--no-save',
-        action='store_true',
-        help='Do not save output files'
-    )
-
-    parser.add_argument(
-        '--no-maps',
-        action='store_true',
-        help='Skip map generation'
-    )
-
-    parser.add_argument(
-        '--no-es',
-        action='store_true',
-        help='Skip Elasticsearch indexing'
-    )
-
-    parser.add_argument(
-        '--output', '-o',
-        type=str,
-        default='output',
-        help='Output directory (default: output)'
-    )
-
-    parser.add_argument(
-        '--h3_resolution',
-        type=int,
-        default=10,
-        help='The resolution for map exagons (integer, default: 10)'
-        )
-
-    args = parser.parse_args()
-
-    run_analysis(
-        use_cached_data=args.cached,
-        save_data=not args.no_save,
-        create_maps=not args.no_maps,
-        enable_es=not args.no_es,
-        output_dir=args.output,
-        h3_resolution=args.h3_resolution
-    )
-
-
-if __name__ == "__main__":
-    main()

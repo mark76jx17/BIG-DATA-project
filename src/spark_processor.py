@@ -13,9 +13,6 @@ import pandas as pd
 import geopandas as gpd
 from typing import Dict, List, Optional
 
-from config import CATEGORY_MAPPING, SERVICE_CATEGORIES
-
-
 def create_spark_session(app_name: str = "UrbanServicesAnalysis",
                          memory: str = "4g") -> SparkSession:
     """
@@ -87,7 +84,7 @@ def geopandas_to_spark(spark: SparkSession,
 
 
 def categorize_services_spark(df: DataFrame,
-                              category_mapping: Dict = CATEGORY_MAPPING) -> DataFrame:
+                              category_mapping: dict) -> DataFrame:
     """
     Categorize services using PySpark based on OSM tags.
 
@@ -185,6 +182,8 @@ def aggregate_by_h3(df: DataFrame) -> DataFrame:
     # Join total with category breakdown
     df_final = df_total.join(df_category, on=['h3_index', 'city'], how='left')
 
+
+
     print(f"Aggregated to {df_final.count()} unique H3 cells")
     return df_final
 
@@ -225,7 +224,7 @@ def add_h3_centroids(df: DataFrame) -> DataFrame:
 
 def process_pois_with_spark(spark: SparkSession,
                             gdf: gpd.GeoDataFrame,
-                            h3_resolution: int) -> pd.DataFrame:
+                            config: dict) -> pd.DataFrame:
     """
     Complete processing pipeline using PySpark.
 
@@ -246,7 +245,7 @@ def process_pois_with_spark(spark: SparkSession,
 
     print("\n1. Converting GeoDataFrame to Spark DataFrame...")
     spark_df = geopandas_to_spark(spark, gdf)
-    print("\n   >>> Anteprima Spark DataFrame (dati grezzi con coordinate):")
+    print("\n   >>> Spark DataFrame preview (row data):")
     spark_df.show(5, truncate=False)
 
     # ── Step 2.2: Categorizzazione servizi ──
@@ -254,12 +253,12 @@ def process_pois_with_spark(spark: SparkSession,
     # Food, ecc.) in base ai tag OSM (amenity, leisure, shop, healthcare, ...).
     # Si usa un'espressione CASE WHEN che mappa ogni valore del tag alla categoria.
     print("\n2. Categorizing services based on OSM tags...")
-    spark_df = categorize_services_spark(spark_df)
-    print("\n   >>> Anteprima dopo categorizzazione (colonna 'category' aggiunta):")
+    spark_df = categorize_services_spark(spark_df, category_mapping=config.get("CATEGORY_MAPPING"))
+    print("\n   >>> Preview after categorization (added 'category' column):")
     spark_df.select('lat', 'lng', 'city', 'amenity', 'category').show(5, truncate=False)
 
     # Distribuzione delle categorie: quanti POI per ogni categoria
-    print("\n   >>> Distribuzione categorie (quanti POI per tipo):")
+    print("\n   >>> Category distribution (how many POIs per type):")
     spark_df.groupBy('category').count().orderBy(F.desc('count')).show(20)
 
     # ── Step 2.3: Calcolo indici H3 ──
@@ -268,8 +267,8 @@ def process_pois_with_spark(spark: SparkSession,
     # I POI con coordinate non valide vengono filtrati.
     
     print("\n3. Calculating H3 spatial indices...")
-    spark_df = add_h3_indices(spark_df, h3_resolution)
-    print("\n   >>> Anteprima con indice H3 (ogni POI ha la sua cella esagonale):")
+    spark_df = add_h3_indices(spark_df, config.get("H3_RESOLUTION"))
+    print("\n   >>> Preview with H3 index (Each POI has its hexagonal cell):")
     spark_df.select('lat', 'lng', 'city', 'category', 'h3_index').show(5, truncate=False)
 
     # ── Step 2.4: Aggregazione per cella H3 ──
@@ -278,23 +277,30 @@ def process_pois_with_spark(spark: SparkSession,
     # - Una colonna per ogni categoria con il relativo conteggio (pivot)
     print("\n4. Aggregating POI counts by H3 cell...")
     aggregated_df = aggregate_by_h3(spark_df)
-    print("\n   >>> Anteprima dati aggregati (servizi totali e per categoria in ogni cella):")
+    print("\n   >>> Previev aggregate data (total of services for each category in each cell):")
+    aggregated_df.show(5, truncate=False)
+
+
+
+    print("\n5. Computing accessibility index...")
+    aggregated_df = add_accessibility_index(aggregated_df, "assets/services_importance.csv")
+    print("\n   >>> Previev data with accessibility index:")
     aggregated_df.show(5, truncate=False)
 
     # ── Step 2.5: Aggiunta centroidi H3 ──
     # Per ogni cella H3 si calcolano le coordinate lat/lng del centroide,
     # necessarie per posizionare gli esagoni sulla mappa Kepler.
-    print("\n5. Adding H3 cell centroids (lat/lng for map positioning)...")
+    print("\n6. Adding H3 cell centroids (lat/lng for map positioning)...")
     aggregated_df = add_h3_centroids(aggregated_df)
-    print("\n   >>> Anteprima finale Spark (con coordinate centroide per ogni cella):")
+    print("\n   >>> Preview final DataFrame (with coordinates of centroid of each cell):")
     aggregated_df.show(5, truncate=False)
 
     # ── Step 2.6: Conversione a Pandas ──
     # Il DataFrame Spark viene convertito in Pandas per l'uso con Kepler.gl
     # e per le analisi statistiche successive.
-    print("\n6. Converting Spark DataFrame to Pandas...")
+    print("\n7. Converting Spark DataFrame to Pandas...")
     result_pdf = aggregated_df.toPandas()
-    print("\n   >>> Anteprima Pandas DataFrame finale:")
+    print("\n   >>> Preview final Pandas DataFrame:")
     print(result_pdf.head(5).to_string())
 
     print("\n" + "="*50)
@@ -337,35 +343,19 @@ def get_spark_statistics(spark_df: DataFrame) -> Dict:
 
     return stats
 
+def add_accessibility_index(df: DataFrame, path_to_data_csv: str) -> DataFrame:
+    dataframe = pd.read_csv(path_to_data_csv).astype(int)
+    weights = dict(dataframe.mean(axis=0) / dataframe.mean(axis=0).sum())
+
+    cols = [c for c in weights if c in df.columns]
+    if not cols:
+        return df
+
+    weighted_cols = [F.col(c) * F.lit(weights[c]) for c in cols]
+    weighted_sum = sum(weighted_cols)
+
+    return df.withColumn("accessibility_index", F.round(weighted_sum, 2))
+
 
 if __name__ == "__main__":
-    # Test with sample data
-    spark = create_spark_session()
-
-    # Create sample data
-    sample_data = [
-        (45.1867, 9.1550, 'Pavia', 'restaurant', '', '', '', '', ''),
-        (45.1870, 9.1555, 'Pavia', 'hospital', '', '', '', '', ''),
-        (39.2238, 9.1217, 'Cagliari', 'school', '', '', '', '', ''),
-    ]
-
-    schema = StructType([
-        StructField('lat', DoubleType(), True),
-        StructField('lng', DoubleType(), True),
-        StructField('city', StringType(), True),
-        StructField('amenity', StringType(), True),
-        StructField('leisure', StringType(), True),
-        StructField('shop', StringType(), True),
-        StructField('healthcare', StringType(), True),
-        StructField('office', StringType(), True),
-        StructField('tourism', StringType(), True),
-    ])
-
-    test_df = spark.createDataFrame(sample_data, schema)
-    test_df = categorize_services_spark(test_df)
-    test_df = add_h3_indices(test_df)
-
-    print("\nTest results:")
-    test_df.show()
-
-    spark.stop()
+    ...

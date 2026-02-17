@@ -7,9 +7,7 @@ import osmnx as ox
 import pandas as pd
 import geopandas as gpd
 import warnings
-from typing import List, Dict, Optional
-
-from config import TAGS, LOCATIONS
+from typing import Dict, Optional
 
 # Suppress warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="osmnx")
@@ -39,8 +37,7 @@ def download_pois_for_location(place: dict, tags: Dict) -> Optional[gpd.GeoDataF
         return None
 
 
-def download_all_pois(places: List[str] = LOCATIONS,
-                      tags: Dict = TAGS) -> gpd.GeoDataFrame:
+def download_all_pois(config: dict) -> gpd.GeoDataFrame:
     """
     Download POIs for all locations.
 
@@ -55,6 +52,9 @@ def download_all_pois(places: List[str] = LOCATIONS,
         Exception: If no data could be downloaded
     """
     all_gdfs = []
+
+    places = config.get("LOCATIONS")
+    tags = config.get("TAGS")
 
     for place in places:
         gdf = download_pois_for_location(place, tags)

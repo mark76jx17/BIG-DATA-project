@@ -4,15 +4,8 @@ Indexes H3 cell data and provides search functions by service type.
 """
 
 import pandas as pd
-from typing import List, Dict, Optional
+from typing import List, Dict
 from elasticsearch import Elasticsearch, helpers
-
-from config import (
-    ELASTICSEARCH_HOST,
-    ELASTICSEARCH_INDEX,
-    SERVICE_CATEGORIES
-)
-
 
 # Elasticsearch index mapping
 INDEX_SETTINGS = {
@@ -50,7 +43,7 @@ INDEX_MAPPINGS = {
 }
 
 
-def create_es_client(host: str = ELASTICSEARCH_HOST) -> Elasticsearch:
+def create_es_client(host: str) -> Elasticsearch:
     """Create and return an Elasticsearch client."""
     es = Elasticsearch(
         host,
@@ -64,7 +57,7 @@ def create_es_client(host: str = ELASTICSEARCH_HOST) -> Elasticsearch:
     return es
 
 
-def create_index(es: Elasticsearch, index_name: str = ELASTICSEARCH_INDEX) -> None:
+def create_index(es: Elasticsearch, index_name: str) -> None:
     """Create the ES index with mapping. Deletes existing index if present."""
     if es.indices.exists(index=index_name):
         es.indices.delete(index=index_name)
@@ -74,7 +67,7 @@ def create_index(es: Elasticsearch, index_name: str = ELASTICSEARCH_INDEX) -> No
     print(f"Created index '{index_name}'")
 
 
-def _build_document(row: pd.Series) -> Dict:
+def _build_document(row: pd.Series, service_categories: list) -> Dict:
     """Build an ES document from a DataFrame row."""
     doc = {
         "h3_index": row.get("h3_index", ""),
@@ -90,7 +83,7 @@ def _build_document(row: pd.Series) -> Dict:
 
     # Add category counts and build categories_present list
     categories_present = []
-    for cat in SERVICE_CATEGORIES:
+    for cat in service_categories:
         count = int(row.get(cat, 0))
         doc[cat] = count
         if count > 0:
@@ -102,19 +95,19 @@ def _build_document(row: pd.Series) -> Dict:
 
 def index_h3_data(es: Elasticsearch,
                   df: pd.DataFrame,
-                  index_name: str = ELASTICSEARCH_INDEX) -> int:
+                  config: dict) -> int:
     """Bulk index H3 aggregated data into Elasticsearch."""
     actions = []
     for _, row in df.iterrows():
-        doc = _build_document(row)
+        doc = _build_document(row, config.get("SERVICE_CATEGORIES"))
         actions.append({
-            "_index": index_name,
+            "_index": config.get('ELASTICSEARCH_INDEX'),
             "_id": doc["h3_index"],
             "_source": doc
         })
 
     success, errors = helpers.bulk(es, actions, raise_on_error=False)
-    print(f"Indexed {success} documents into '{index_name}'")
+    print(f"Indexed {success} documents into '{config.get('ELASTICSEARCH_INDEX')}'")
     if errors:
         print(f"  Errors: {len(errors)}")
     return success
@@ -122,7 +115,7 @@ def index_h3_data(es: Elasticsearch,
 
 def search_by_service(es: Elasticsearch,
                       category: str,
-                      index_name: str = ELASTICSEARCH_INDEX) -> List[Dict]:
+                      index_name: str) -> List[Dict]:
     """Find all H3 cells that have a specific service type."""
     result = es.search(
         index=index_name,
@@ -132,30 +125,10 @@ def search_by_service(es: Elasticsearch,
     return [hit["_source"] for hit in result["hits"]["hits"]]
 
 
-def search_by_city_and_service(es: Elasticsearch,
-                               city: str,
-                               category: str,
-                               index_name: str = ELASTICSEARCH_INDEX) -> List[Dict]:
-    """Find H3 cells in a specific city with a given service type."""
-    result = es.search(
-        index=index_name,
-        query={
-            "bool": {
-                "must": [
-                    {"term": {"city": city}},
-                    {"term": {"categories_present": category}}
-                ]
-            }
-        },
-        size=10000
-    )
-    return [hit["_source"] for hit in result["hits"]["hits"]]
-
-
 def get_top_cells(es: Elasticsearch,
                   category: str,
-                  size: int = 10,
-                  index_name: str = ELASTICSEARCH_INDEX) -> List[Dict]:
+                  index_name: str,
+                  size: int = 10) -> List[Dict]:
     """Get top H3 cells by service count for a given category."""
     result = es.search(
         index=index_name,
@@ -166,28 +139,7 @@ def get_top_cells(es: Elasticsearch,
     return [hit["_source"] for hit in result["hits"]["hits"]]
 
 
-def search_cells(es: Elasticsearch,
-                 city: Optional[str] = None,
-                 category: Optional[str] = None,
-                 min_services: Optional[int] = None,
-                 index_name: str = ELASTICSEARCH_INDEX) -> List[Dict]:
-    """Search H3 cells with combinable filters."""
-    must_clauses = []
-
-    if city:
-        must_clauses.append({"term": {"city": city}})
-    if category:
-        must_clauses.append({"term": {"categories_present": category}})
-    if min_services is not None:
-        must_clauses.append({"range": {"service_count": {"gte": min_services}}})
-
-    query = {"bool": {"must": must_clauses}} if must_clauses else {"match_all": {}}
-
-    result = es.search(index=index_name, query=query, size=10000)
-    return [hit["_source"] for hit in result["hits"]["hits"]]
-
-
-def print_es_summary(es: Elasticsearch, index_name: str = ELASTICSEARCH_INDEX) -> None:
+def print_es_summary(es: Elasticsearch, index_name: str) -> None:
     """Print a summary of indexed data with sample queries."""
     count = es.count(index=index_name)["count"]
     print(f"\n  Total documents indexed: {count}")
