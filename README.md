@@ -72,7 +72,7 @@ To measure accessibility in a given urban area in a way that allows meaningful c
 For each H3 cell, the index is computed using the following formula:
 
 $$
-EAI = \frac{1}{N}\sum{w_in_i}
+EAI = \sum{w_in_i}
 $$
 
 where 
