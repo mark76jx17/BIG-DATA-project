@@ -26,3 +26,4 @@ elasticsearch==8.17.0
 
 # Utilities
 tqdm>=4.65.0  # Progress bars (optional)
+python-dotenv==1.2.1

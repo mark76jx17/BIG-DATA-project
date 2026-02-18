@@ -4,7 +4,7 @@ LOCATIONS:
 - city: Pavia
   country: Italy
 WELL_SERVED_THRESHOLD: 3
-H3_RESOLUTION: 10
+H3_RESOLUTION: 9
 TAGS:
   amenity:
   - hospital
@@ -488,11 +488,11 @@ PALETTES:
   - '#0097a7'
   - '#006064'
   accessibility_index:
-  - '#5A1846'
-  - '#900C3F'
-  - '#C70039'
-  - '#E3611C'
-  - '#F1920E'
+  - '#d7191c'
+  - '#fdae61'
+  - '#ffffbf'
+  - '#a6d96a'
+  - '#1a9641'
 ELASTICSEARCH_HOST: http://localhost:9200
 ELASTICSEARCH_INDEX: urban_services_h3
 SERVER_HOST: localhost
