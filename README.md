@@ -80,6 +80,27 @@ where
 - $w_i$: empirical weight for the $i$-th service
 - $n_i$: occurrences of the $i$-th service in the cell
 
+| Service                | Weight  |
+|------------------------|---------|
+| Health                 | 0.07966 |
+| Education              | 0.05974 |
+| Food                   | 0.05974 |
+| Food Retail            | 0.07966 |
+| Retail                 | 0.04836 |
+| Services               | 0.05548 |
+| Financial              | 0.05832 |
+| Public Services        | 0.05263 |
+| Security               | 0.06828 |
+| Sports                 | 0.05974 |
+| Recreation             | 0.06828 |
+| Culture                | 0.05263 |
+| Religion               | 0.03272 |
+| Transportation         | 0.07255 |
+| Tourism                | 0.04694 |
+| Professional Services  | 0.03841 |
+| Public Utilities       | 0.06686 |
+
+
 📊 You can also contribute to improve our Index! Just fill out our quick survey at <a href="https://forms.gle/bpCquGKE6GJGaTeP6">this link</a>, it takes less than 2 minutes.
 
 ## Get started
@@ -97,7 +118,7 @@ pip install -r requirements.txt
 ```
 
 ### Docker installation
-Follow the installation tutorial for your system in the <a href="https://docs.docker.com/engine/install/">Docker Engine installation page</a>
+If you don't have Docker in your machine, follow the installation tutorial for your system in the <a href="https://docs.docker.com/engine/install/">Docker Engine installation page</a>.
 
 ### Run Elasticsearch Container
 To enable the use of ElasticSearch, make it run in a docker container
