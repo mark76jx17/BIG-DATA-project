@@ -1,4 +1,7 @@
-# Urban Map Explorer
+
+<div align="center">
+
+# 🌍 Urban Map Explorer
 
 ![PySpark](https://img.shields.io/badge/PySpark-3.4%2B-E25A1C?logo=apachespark&logoColor=white)
 ![Elasticsearch](https://img.shields.io/badge/Elasticsearch-8.17-005571?logo=elasticsearch&logoColor=white)
@@ -6,15 +9,17 @@
 ![kepler.gl](https://img.shields.io/badge/kepler.gl-0.3.2-2E86C1?logo=mapbox&logoColor=white)
 ![H3](https://img.shields.io/badge/H3-3.7%2B-1A5276?logo=hexo&logoColor=white)
 
+![Testo alternativo](schema.png)
+
+</div>
+
 
 We present an efficient, Big Data–ready workflow for downloading urban data from OpenStreetMap and presenting it through an intuitive, user-friendly interface. The platform enables interactive exploration, service selection, simple queries, and service filtering, combining a Kepler.gl–powered visualization with an integrated query tool.
 
----
-
 ## Workflow
 
-### Download data from OpenStreetMap
-   - Osmx API
+### OpenStreetMap data Download
+   - Osmnx API
    - Identify available services and categories for the selected cities
 
 ### Spark Data Processing
@@ -25,9 +30,8 @@ We present an efficient, Big Data–ready workflow for downloading urban data fr
    - Computation of **Empirical Accessibility Index**
 
 ### ElasticSearch Index Creation
-   - Index by:
-      - H3 cell
-      - Service type (health, education, etc.)
+   - Index creation
+    - Enabling queries for city, service type, number of services
 
 ### Statistical analysis
    - Computation of insights for city accessibility comparison
@@ -40,90 +44,26 @@ We present an efficient, Big Data–ready workflow for downloading urban data fr
 
 ## Services and POIs considered
 
-### 🏥 Health
-Access to medical care, healthcare services, and prevention.
+<div align="center">
+🏥 <strong>Health</strong> &ensp;
+📚 <strong>Education</strong> &ensp;
+🍕 <strong>Food</strong> &ensp;
+🛒 <strong>Food Retail</strong> &ensp;
+🛍️ <strong>Retail</strong> &ensp;
+✂️ <strong>Services</strong> &ensp;
+💳 <strong>Financial</strong> &ensp;
+🏛️ <strong>Public Services</strong> &ensp;
+👮 <strong>Security</strong> &ensp;
+⚽ <strong>Sports</strong> &ensp;
+🌳 <strong>Recreation</strong> &ensp;
+🎭 <strong>Culture</strong> &ensp;
+⛪ <strong>Religion</strong> &ensp;
+🚲 <strong>Transportation</strong> &ensp;
+🏨 <strong>Tourism</strong> &ensp;
+⚖️ <strong>Professional Services</strong> &ensp;
+🚮 <strong>Public Utilities</strong> &ensp;
+</div>
 
-**Examples**: Hospitals, Pharmacies, Medical/Dental Clinics.
-
-### 📚 Education
-Places dedicated to learning, research, and training.
-
-**Examples**: Universities, Libraries, Language Schools.
-
-### 🍕 Food
-Services for consuming ready-made meals and dining socialization.
-
-Examples: Canteens/Restaurants, Bars/Cafés, Pubs/Fast-food.
-
-### 🛒 Food Retail
-Shops for purchasing food and drinks for domestic consumption.
-
-Examples: Supermarkets, Bakeries, Local Markets.
-
-### 🛍️ Retail
-General consumer goods stores, equipment, and department stores.
-
-**Examples**: Shopping Malls, Newsstands, Hardware Stores.
-
-### ✂️ Services
-Activities dedicated to personal care and daily needs.
-
-**Examples**: Hairdressers/Barbers, Laundromats, Beauty Centers.
-
-### 💳 Financial
-Money management and tax/economic consultancy.
-
-**Examples**: ATMs, Banks, Accountants.
-
-### 🏛️ Public Services
-Administrative offices and state infrastructure for citizens.
-
-**Examples**: Post Offices, Town Halls, Employment Agencies.
-
-### 👮 Security
-Facilities for citizen protection and emergency management.
-
-**Examples**: Police Stations, Fire Stations.
-
-### ⚽ Sports
-Facilities for physical activity, training, and sporting events.
-
-**Examples**: Gyms, Swimming Pools, Sports Fields/Stadiums.
-
-### 🌳 Recreation
-Green spaces and public areas for relaxation and leisure time.
-
-**Examples**: Parks, Picnic Areas, Public Gardens.
-
-### 🎭 Culture
-Entertainment venues, artistic production, and nightlife.
-
-**Examples**: Cinemas/Theaters, Museums, Nightclubs.
-
-### ⛪ Religion
-Places of worship and spaces dedicated to spirituality.
-
-**Examples**: Churches/Mosques/Synagogues, Monasteries.
-
-### 🚲 Transportation
-Infrastructure for moving around the city or renting vehicles.
-
-**Examples**: Bus Stops/Stations, Bike Sharing, Bicycle Parking.
-
-### 🏨 Tourism
-Hospitality, accommodation, and information services for visitors.
-
-**Examples**: Hostels/Hotels, Info Points, Viewpoints.
-
-### ⚖️ Professional Services
-Legal, notary, and real estate brokerage consultancy.
-
-**Examples**: Law Firms, Notaries, Real Estate Agencies.
-
-### 🚮 Public Utilities
-Essential services for urban decorum and primary needs.
-
-**Examples**: Drinking Fountains, Public Toilets, Waste Collection/Recycling.
 
 ## Empirical Accessibility Index
 
@@ -142,13 +82,23 @@ where
 
 ## Get started
 
-To enable the use of 
-### Requirements
-- Install **Docker**
-- Install dependencies from `requirements.txt`
+### Basic Requirements
+- Python 3.10 🐍 (tested ✅)
+- Docker 28.2 🐋(tested ✅)
+
+### Python Virtual environment
+To create and activate the PIP virtual environment run
+```bash
+python3 -m venv URBAN
+source URBAN/bin/activate
+pip install -r requirements.txt
+```
+
+### Docker installation
+Follow the installation tutorial for your system in the <a href="https://docs.docker.com/engine/install/">Docker Engine installation page</a>
 
 ### Run Elasticsearch Container
-
+To enable the use of ElasticSearch, make it run in a docker container
 ```bash
 sudo docker rm -f elasticsearch 2>/dev/null
 
@@ -164,17 +114,31 @@ sudo docker run -d \
   -e http.cors.allow-methods=OPTIONS,HEAD,GET,POST \
   -e http.cors.allow-headers=Content-Type \
   elasticsearch:8.17.0
-
-
-python3 run_analysis.py
-
-# or, if data is alredy downloaded  
-
-python3 run_analysis.py --cached
 ```
-to view the map
+❗This step is recommended but not necessary, in fact, if you don't start the Docker container you won't be able create the ElasticSearch index and perform queries inside the interactive map, but you will however be able to explore and set filters manually from the native UI.
+
+### Build Interactive Explorer
+To start the pipeline run the following commands from the root of the project.
 ```bash
-
-python3 output/launch_explorer.py
-
+python3 run_analysis.py
 ```
+- Enter up to three cities to display on the map. At most one may be <a href="https://operations.osmfoundation.org/policies/nominatim/">too large</a>.
+- Then enter the desired resolution for H3 cells (usually values from 8 to 10).
+
+At this stage, the report and the interactive map have been produced and are available in the `output/` directory.
+
+To run the map explorer, execute
+```bash
+python3 output/launch_explorer.py
+```
+then go to the local address where the page is hosted.
+
+---
+
+
+<p align="center">
+  Cardia F. Loddo M. N.<br>
+  Big Data Project 2025/2026<br>
+  CdLM in Computer Science - Applied Artificial Intelligence<br>
+  Cagliari State University
+</p>
