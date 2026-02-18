@@ -18,26 +18,26 @@ We present an efficient, Big Data–ready workflow for downloading urban data fr
 
 ## Workflow
 
-### OpenStreetMap data Download
+### 📥 OpenStreetMap data Download
    - Osmnx API
    - Identify available services and categories for the selected cities
 
-### Spark Data Processing
+### ⚡ Spark Data Processing
    - Spark session initialization
    - Service mapping into macro-categories
    - Computing of H3-indexes for geographic cell renedring
    - Aggregation of services by H3 cells
    - Computation of **Empirical Accessibility Index**
 
-### ElasticSearch Index Creation
+### 🔍 ElasticSearch Index Creation
    - Index creation
     - Enabling queries for city, service type, number of services
 
-### Statistical analysis
+### 📈 Statistical analysis
    - Computation of insights for city accessibility comparison
    - Creation of syntethic descriptive reports
 
-### Visualization
+### 🗺️ Visualization
    - Creation of interactive map with **Kepler.gl** framework
    - Display aggregated and category-filtered services per H3 hexagon
    - Integration of intuitive query tool
@@ -79,6 +79,8 @@ where
 - $N$: total number of services in the cell
 - $w_i$: empirical weight for the $i$-th service
 - $n_i$: occurrences of the $i$-th service in the cell
+
+📊 You can also contribute to improve our Index! Just fill out our quick survey at <a href="https://forms.gle/bpCquGKE6GJGaTeP6">this link</a>, it takes less than 2 minutes.
 
 ## Get started
 
