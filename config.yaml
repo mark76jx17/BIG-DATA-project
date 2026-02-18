@@ -4,7 +4,7 @@ LOCATIONS:
 - city: Pavia
   country: Italy
 WELL_SERVED_THRESHOLD: 3
-H3_RESOLUTION: 9
+H3_RESOLUTION: 10
 TAGS:
   amenity:
   - hospital

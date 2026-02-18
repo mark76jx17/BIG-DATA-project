@@ -280,8 +280,6 @@ def process_pois_with_spark(spark: SparkSession,
     print("\n   >>> Previev aggregate data (total of services for each category in each cell):")
     aggregated_df.show(5, truncate=False)
 
-
-
     print("\n5. Computing accessibility index...")
     aggregated_df = add_accessibility_index(aggregated_df, "assets/services_importance.csv")
     print("\n   >>> Previev data with accessibility index:")
