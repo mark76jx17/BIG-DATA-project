@@ -73,7 +73,7 @@ def run_analysis(enable_es: bool = True,
     print("=" * 50)
 
     print("Downloading POI data from OpenStreetMap...")
-    gdf_pois = download_all_pois(config)
+    gdf_pois = download_all_pois(config, config_path)
 
 
     print(f"\nTotal POIs: {len(gdf_pois)}")

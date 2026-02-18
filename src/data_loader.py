@@ -8,6 +8,7 @@ import pandas as pd
 import geopandas as gpd
 import warnings
 from typing import Dict, Optional
+import yaml
 
 # Suppress warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="osmnx")
@@ -37,7 +38,7 @@ def download_pois_for_location(place: dict, tags: Dict) -> Optional[gpd.GeoDataF
         return None
 
 
-def download_all_pois(config: dict) -> gpd.GeoDataFrame:
+def download_all_pois(config: dict, config_path: str) -> gpd.GeoDataFrame:
     """
     Download POIs for all locations.
 
@@ -65,7 +66,14 @@ def download_all_pois(config: dict) -> gpd.GeoDataFrame:
         raise Exception("No data downloaded!")
 
     combined = pd.concat(all_gdfs, ignore_index=True)
-    print(f"\nTotal POIs downloaded: {len(combined)}")
+
+    print("cities: ", combined["city"].unique())
+
+    ACTUAL_CITIES = {city: "Italy" for city in combined["city"].unique()}
+    config["LOCATIONS"] = [{"city": city, "country": "Italy"} for city in ACTUAL_CITIES ]   
+
+    with open(config_path, 'w') as file:
+        yaml.dump(config, file, default_flow_style=False, sort_keys=False)
 
     return combined
 
