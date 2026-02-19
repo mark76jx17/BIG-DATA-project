@@ -109,6 +109,11 @@ where
 - Python 3.10 🐍 (tested ✅)
 - Docker 28.2 🐋(tested ✅)
 
+Fetch the project running
+```bash
+git clone https://github.com/mark76jx17/BIG-DATA-project
+```
+
 ### Python Virtual environment
 To create and activate the PIP virtual environment run
 ```bash
