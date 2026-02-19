@@ -114,6 +114,13 @@ Fetch the project running
 git clone https://github.com/mark76jx17/BIG-DATA-project
 ```
 
+### Java installatio
+In order to install and enable the JVM for Spark processing run
+```bash
+sudo apt update
+sudo apt install openjdk-17-jdk
+```
+
 ### Python Virtual environment
 To create and activate the PIP virtual environment run
 ```bash
