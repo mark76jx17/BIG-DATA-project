@@ -106,15 +106,15 @@ where
 ## Get started
 
 ### Basic Requirements
-- Python 3.10 🐍 (tested ✅)
-- Docker 28.2 🐋(tested ✅)
+- Python 3.10, 3.12 🐍 (tested ✅)
+- Docker 28.2, 29.2.1 🐋(tested ✅)
 
 Fetch the project running
 ```bash
 git clone https://github.com/mark76jx17/BIG-DATA-project
 ```
 
-### Java installatio
+### Java installation
 In order to install and enable the JVM for Spark processing run
 ```bash
 sudo apt update
@@ -122,7 +122,12 @@ sudo apt install openjdk-17-jdk
 ```
 
 ### Python Virtual environment
-To create and activate the PIP virtual environment run
+To enable Python to create a virtual environment, run 
+```bash
+sudo apt install python3-venv python3-pip
+```
+
+Then, to create and activate the PIP virtual environment run
 ```bash
 python3 -m venv URBAN
 source URBAN/bin/activate
@@ -149,6 +154,10 @@ sudo docker run -d \
   -e http.cors.allow-methods=OPTIONS,HEAD,GET,POST \
   -e http.cors.allow-headers=Content-Type \
   elasticsearch:8.17.0
+```
+To see if the container is running, run 
+```bash
+sudo docker ps 
 ```
 ❗This step is recommended but not necessary, in fact, if you don't start the Docker container you won't be able create the ElasticSearch index and perform queries inside the interactive map, but you will however be able to explore and set filters manually from the native UI.
 
