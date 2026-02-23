@@ -83,10 +83,9 @@ def geopandas_to_spark(spark: SparkSession,
     return spark_df
 
 
-def categorize_services_spark(df: DataFrame,
-                              category_mapping: dict) -> DataFrame:
+def categorize_services_spark(df: DataFrame, category_mapping: dict) -> DataFrame:
     """
-    Categorize services using PySpark based on OSM tags.
+    Categorize services using PySpark based on OSM tags (optimized and correct version).
 
     Args:
         df: Spark DataFrame with POI data
@@ -95,29 +94,36 @@ def categorize_services_spark(df: DataFrame,
     Returns:
         DataFrame with 'category' column added
     """
-    # Create a mapping expression using CASE WHEN
-    # We check each tag column in order of priority
+    spark = SparkSession.builder.getOrCreate()
+
+    # Create a mapping DataFrame and rename category column to avoid ambiguity
+    mapping_df = spark.createDataFrame(
+        [(k, v) for k, v in category_mapping.items()],
+        ["poi_type", "mapped_category"]
+    )
+
     tag_columns = ['amenity', 'leisure', 'shop', 'healthcare', 'office', 'tourism']
 
-    # Build the categorization expression
-    case_expr = None
+    # Start with category = null
+    df_with_category = df.withColumn("category", F.lit(None))
 
     for tag_col in tag_columns:
         if tag_col in df.columns:
-            for poi_type, category in category_mapping.items():
-                condition = F.col(tag_col) == poi_type
-                if case_expr is None:
-                    case_expr = F.when(condition, F.lit(category))
-                else:
-                    case_expr = case_expr.when(condition, F.lit(category))
+            # Left join using the current tag column
+            df_with_category = df_with_category.join(
+                mapping_df,
+                df_with_category[tag_col] == mapping_df.poi_type,
+                "left"
+            ).withColumn(
+                # coalesce: keep previous category if exists, else take mapped_category
+                "category",
+                F.coalesce(df_with_category["category"], F.col("mapped_category"))
+            ).drop("poi_type", "mapped_category")  # remove helper columns
 
-    if case_expr is not None:
-        case_expr = case_expr.otherwise(F.lit('Other'))
-        df = df.withColumn('category', case_expr)
-    else:
-        df = df.withColumn('category', F.lit('Other'))
+    # Fill missing categories with 'Other'
+    df_with_category = df_with_category.fillna({"category": "Other"})
 
-    return df
+    return df_with_category
 
 
 def calculate_h3_index_udf(h3_resolution: int):
