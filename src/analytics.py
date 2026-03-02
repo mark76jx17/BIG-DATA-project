@@ -71,7 +71,8 @@ def calculate_accessibility_metrics(df: pd.DataFrame,
             'total_cells': total,
             'percentage_well_served': (well_served / total * 100) if total > 0 else 0,
             'percentage_poorly_served': (poorly_served / total * 100) if total > 0 else 0,
-            'accessibility_empiric_index': city_data["accessibility_index"].mean()
+            'accessibility_empiric_index': city_data["accessibility_index"].mean(),
+            'max_accessibility_empiric_index': city_data["accessibility_index"].max()
         }
 
     return results
@@ -151,7 +152,8 @@ def generate_report(df: pd.DataFrame,
         lines.append(f"    - Well-served cells: {access['well_served_cells']}")
         lines.append(f"    - Poorly-served cells: {access['poorly_served_cells']}")
         lines.append(f"    - Accessibility rate: {access['percentage_well_served']:.1f}%")
-        lines.append(f"    - Accessibility Empiric Index: {access['accessibility_empiric_index']:.1f}")
+        lines.append(f"    - Mean EAI : {access['accessibility_empiric_index']:.3f}")
+        lines.append(f"    - Max EAI: {access['max_accessibility_empiric_index']:.3f}")
 
     lines.append("\n" + "=" * 70)
 

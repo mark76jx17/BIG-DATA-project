@@ -16,23 +16,36 @@ warnings.filterwarnings("ignore", message="Geometry is in a geographic CRS")
 
 
 def download_pois_for_location(place: dict, tags: Dict) -> Optional[gpd.GeoDataFrame]:
-    """
-    Download POIs for a single location from OpenStreetMap.
-
-    Args:
-        location: City name with country (e.g., 'Pavia, Italy')
-        tags: Dictionary of OSM tags to query
-
-    Returns:
-        GeoDataFrame with POIs or None if download fails
-    """
     try:
         print(f"Downloading data for {place['city']}, {place['country']}...")
-
-        gdf = ox.features.features_from_place(place, tags)
+        
+        tag_items = list(tags.items())
+        batch_size = 3
+        batches = [dict(tag_items[i:i+batch_size]) for i in range(0, len(tag_items), batch_size)]
+        
+        gdfs = []
+        for batch_tags in batches:
+            try:
+                gdf_batch = ox.features.features_from_place(place, batch_tags)
+                gdfs.append(gdf_batch)
+            except Exception as e:
+                if "too long" in str(e).lower() or "400" in str(e):
+                    for key, val in batch_tags.items():
+                        try:
+                            gdf_single = ox.features.features_from_place(place, {key: val})
+                            gdfs.append(gdf_single)
+                        except Exception as e2:
+                            print(f"  Skipping tag {key}: {e2}")
+                else:
+                    print(f"  Skipping batch {list(batch_tags.keys())}: {e}")
+        
+        if not gdfs:
+            return None
+        
+        gdf = gpd.pd.concat(gdfs).drop_duplicates()
         gdf['city'] = place["city"]
-
         return gdf
+        
     except Exception as e:
         print(f"  Error downloading {place['city']}, {place['country']}: {e}")
         return None

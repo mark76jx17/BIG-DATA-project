@@ -14,7 +14,7 @@ import geopandas as gpd
 from typing import Dict, List, Optional
 
 def create_spark_session(app_name: str = "UrbanServicesAnalysis",
-                         memory: str = "4g") -> SparkSession:
+                         memory: str = "6g") -> SparkSession:
     """
     Create and configure a SparkSession.
 
@@ -167,26 +167,25 @@ def add_h3_indices(df: DataFrame, h3_resolution: int=10) -> DataFrame:
 def aggregate_by_h3(df: DataFrame) -> DataFrame:
     """
     Aggregate POI counts by H3 cell and city.
-
     Args:
         df: Spark DataFrame with h3_index and category columns
-
     Returns:
         Aggregated DataFrame with service counts per H3 cell
     """
-    # Total count per cell
-    df_total = (df.groupBy('h3_index', 'city')
-                .count()
-                .withColumnRenamed('count', 'service_count'))
+    from pyspark.sql import functions as F
 
-    # Count per category using pivot
+    # Count per category using pivot (single aggregation pass)
     df_category = (df.groupBy('h3_index', 'city')
                    .pivot('category')
                    .count()
                    .fillna(0))
 
-    # Join total with category breakdown
-    df_final = df_total.join(df_category, on=['h3_index', 'city'], how='left')
+    # Derive total service_count by summing all category columns
+    category_cols = [c for c in df_category.columns if c not in ('h3_index', 'city')]
+    df_final = df_category.withColumn('service_count', sum(F.col(c) for c in category_cols))
+
+    print(f"Aggregated to {df_final.count()} unique H3 cells")
+    return df_final
 
 
 
@@ -350,15 +349,28 @@ def get_spark_statistics(spark_df: DataFrame) -> Dict:
 def add_accessibility_index(df: DataFrame, path_to_data_csv: str) -> DataFrame:
     dataframe = pd.read_csv(path_to_data_csv).astype(int)
     weights = dict(dataframe.mean(axis=0) / dataframe.mean(axis=0).sum())
-
     cols = [c for c in weights if c in df.columns]
     if not cols:
         return df
 
-    weighted_cols = [F.col(c) * F.lit(weights[c]) for c in cols]
-    weighted_sum = sum(weighted_cols)
+    # Calcola min/max per normalizzare ogni colonna in [0, 1]
+    stats = df.select(
+        *[F.min(c).alias(f"{c}_min") for c in cols],
+        *[F.max(c).alias(f"{c}_max") for c in cols],
+    ).collect()[0]
 
-    return df.withColumn("accessibility_index", F.round(weighted_sum, 2))
+    normalized_cols = []
+    for c in cols:
+        col_min = stats[f"{c}_min"]
+        col_max = stats[f"{c}_max"]
+        if col_max > col_min:
+            normalized = (F.col(c) - F.lit(col_min)) / F.lit(col_max - col_min)
+        else:
+            normalized = F.lit(0.0)  # colonna costante → contributo nullo
+        normalized_cols.append(normalized * F.lit(weights[c]))
+
+    weighted_sum = sum(normalized_cols)
+    return df.withColumn("accessibility_index", F.round(weighted_sum, 3))
 
 
 if __name__ == "__main__":
